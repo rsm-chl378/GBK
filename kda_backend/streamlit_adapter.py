@@ -14,6 +14,8 @@ def run_from_streamlit_selection(
     controls: list[str] | None = None,
     subgroup: str | None = None,
     method_params: dict | None = None,
+    bootstrap_methods: list[str] | None = None,
+    bootstrap_params: dict | None = None,
 ) -> KDAResult:
     return run_kda(
         data=data,
@@ -23,5 +25,6 @@ def run_from_streamlit_selection(
         controls=controls,
         subgroup=subgroup,
         method_params=method_params,
+        bootstrap_methods=bootstrap_methods,
+        bootstrap_params=bootstrap_params,
     )
-

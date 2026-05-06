@@ -20,6 +20,6 @@ class KDAResult:
     diagnostics: pd.DataFrame
     bar_chart: Any
     subgroup_results: dict[str, "KDAResult"] | None = None
+    subgroup_summary: pd.DataFrame | None = None
     method_metadata: dict[str, dict[str, Any]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
-

@@ -33,17 +33,27 @@ def normalize_scores(values: pd.Series) -> pd.Series:
     out = pd.Series(np.nan, index=values.index, dtype=float)
     if finite.empty:
         return out
-    min_v = finite.min()
-    max_v = finite.max()
-    if math.isclose(float(min_v), float(max_v)):
-        out.loc[finite.index] = 100.0 / len(finite)
+    mean_v = finite.mean()
+    if math.isclose(float(mean_v), 0.0):
+        abs_mean = finite.abs().mean()
+        if math.isclose(float(abs_mean), 0.0):
+            return out
+        out.loc[finite.index] = finite / abs_mean * 100.0
     else:
-        out.loc[finite.index] = (finite - min_v) / (max_v - min_v) * 100.0
+        out.loc[finite.index] = finite / mean_v * 100.0
     return out
 
 
 def rank_desc(values: pd.Series) -> pd.Series:
     return values.rank(ascending=False, method="average")
+
+
+def share_scale(values: pd.Series) -> pd.Series:
+    finite = values.replace([np.inf, -np.inf], np.nan)
+    total = finite.sum(skipna=True)
+    if not np.isfinite(total) or math.isclose(float(total), 0.0):
+        return finite
+    return finite / total
 
 
 def _ols_r2(y: np.ndarray, x: np.ndarray) -> float:
@@ -145,48 +155,20 @@ def regression(
 ) -> MethodResult:
     all_predictors = [*x_vars, *controls]
     x_encoded, mapping = encode_predictors(data, all_predictors)
-    y, y_meta = encode_outcome(data[y_var], y_type)
-    warnings: list[str] = []
-
-    if y_type == "continuous":
-        x_scaled = pd.DataFrame(
-            StandardScaler().fit_transform(x_encoded),
-            index=x_encoded.index,
-            columns=x_encoded.columns,
-        )
-        model = sm.OLS(y, sm.add_constant(x_scaled, has_constant="add")).fit()
-        coeffs = pd.Series(model.params[1:], index=x_encoded.columns)
-        scores = aggregate_encoded_scores(coeffs.abs(), x_vars, mapping)
-        metadata = {"model_type": "OLS", "r2": float(model.rsquared)}
-    elif y_type == "binary":
-        x_scaled = pd.DataFrame(
-            StandardScaler().fit_transform(x_encoded),
-            index=x_encoded.index,
-            columns=x_encoded.columns,
-        )
-        try:
-            model = sm.Logit(y, sm.add_constant(x_scaled, has_constant="add")).fit(disp=False, maxiter=200)
-            coeffs = pd.Series(model.params[1:], index=x_encoded.columns)
-            scores = aggregate_encoded_scores(coeffs.abs(), x_vars, mapping)
-            metadata = {"model_type": "Logit", "classes": y_meta.get("classes")}
-        except Exception as exc:
-            warnings.append(f"regression Logit failed; used absolute point-biserial fallback: {exc}")
-            scores = correlation(data, y_var, x_vars, y_type).scores
-            metadata = {"model_type": "Logit fallback"}
-    else:
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", HessianInversionWarning)
-                model = OrderedModel(y, x_encoded, distr="logit").fit(method="bfgs", disp=False, maxiter=200)
-            coeffs = pd.Series(model.params[: x_encoded.shape[1]], index=x_encoded.columns)
-            scores = aggregate_encoded_scores(coeffs.abs(), x_vars, mapping)
-            metadata = {"model_type": "OrderedModel", "classes": y_meta.get("classes")}
-        except Exception as exc:
-            warnings.append(f"regression OrderedModel failed; used Spearman fallback: {exc}")
-            scores = correlation(data, y_var, x_vars, y_type).scores
-            metadata = {"model_type": "OrderedModel fallback"}
-
-    return MethodResult(scores.reindex(x_vars), metadata, warnings)
+    y, _ = encode_outcome(data[y_var], "continuous")
+    x_scaled = pd.DataFrame(
+        StandardScaler().fit_transform(x_encoded),
+        index=x_encoded.index,
+        columns=x_encoded.columns,
+    )
+    y_scaled = StandardScaler().fit_transform(y.reshape(-1, 1)).ravel()
+    model = sm.OLS(y_scaled, sm.add_constant(x_scaled, has_constant="add")).fit()
+    coeffs = pd.Series(model.params[1:], index=x_encoded.columns)
+    scores = {}
+    for var in x_vars:
+        cols = [col for col in mapping.get(var, [var]) if col in coeffs.index]
+        scores[var] = float(coeffs.loc[cols].sum()) if cols else np.nan
+    return MethodResult(pd.Series(scores, dtype=float).reindex(x_vars), {"model_type": "OLS", "r2": float(model.rsquared)})
 
 
 def drop_one(
@@ -227,7 +209,8 @@ def shapley_lmg(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: lis
     x_encoded, mapping = encode_predictors(data, all_predictors)
     y, _ = encode_outcome(data[y_var], "continuous")
     encoded_scores = compute_lmg(x_encoded, y)
-    return MethodResult(aggregate_encoded_scores(encoded_scores, x_vars, mapping), {"model_type": "LMG"})
+    scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
+    return MethodResult(scores, {"model_type": "LMG"})
 
 
 def johnson(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: list[str], **_) -> MethodResult:
@@ -235,7 +218,8 @@ def johnson(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: list[st
     x_encoded, mapping = encode_predictors(data, all_predictors)
     y, _ = encode_outcome(data[y_var], "continuous")
     encoded_scores = compute_johnson(x_encoded, y)
-    return MethodResult(aggregate_encoded_scores(encoded_scores, x_vars, mapping), {"model_type": "Johnson"})
+    scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
+    return MethodResult(scores, {"model_type": "Johnson"})
 
 
 def _tree_model(method: str, y_type: str, params: dict):
@@ -306,7 +290,7 @@ def random_forest(
         scoring=scoring,
     )
     encoded_scores = pd.Series(perm.importances_mean, index=x_encoded.columns)
-    scores = aggregate_encoded_scores(encoded_scores, x_vars, mapping)
+    scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
     return MethodResult(scores, {"model_type": type(model).__name__, "train_score": float(model.score(x_encoded, y))})
 
 
@@ -327,7 +311,7 @@ def xgboost(
     model.fit(x_encoded, y)
     gain = model.get_booster().get_score(importance_type="gain")
     encoded_scores = pd.Series({col: gain.get(col, 0.0) for col in x_encoded.columns}, dtype=float)
-    scores = aggregate_encoded_scores(encoded_scores, x_vars, mapping)
+    scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
     return MethodResult(scores, {"model_type": type(model).__name__, "train_score": float(model.score(x_encoded, y))})
 
 
@@ -355,7 +339,7 @@ def shap_values(
         if arr.ndim == 3:
             arr = arr.mean(axis=2)
     encoded_scores = pd.Series(arr.mean(axis=0), index=x_encoded.columns)
-    scores = aggregate_encoded_scores(encoded_scores, x_vars, mapping)
+    scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
     return MethodResult(scores, {"model_type": "TreeExplainer"})
 
 

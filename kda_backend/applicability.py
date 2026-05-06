@@ -31,9 +31,9 @@ def method_applicability(method: str, y_type: str) -> Applicability:
 
     if method == "regression":
         hints = {
-            "continuous": "statsmodels OLS",
-            "binary": "statsmodels Logit",
-            "ordered": "statsmodels OrderedModel",
+            "continuous": "statsmodels OLS on standardized variables",
+            "binary": "statsmodels OLS on standardized numeric outcome coding",
+            "ordered": "statsmodels OLS on standardized numeric outcome coding",
         }
         return Applicability(True, hints.get(y_type, "regression"))
 
@@ -45,18 +45,11 @@ def method_applicability(method: str, y_type: str) -> Applicability:
         }
         return Applicability(True, hints.get(y_type, "drop-one model comparison"))
 
-    if method in {"shapley_lmg", "johnson"} and y_type != "continuous":
-        return Applicability(
-            False,
-            "not applicable",
-            f"{method} is only implemented for continuous outcomes in Python v1.",
-        )
-
     if method == "shapley_lmg":
-        return Applicability(True, "custom LMG/Shapley over OLS R2")
+        return Applicability(True, "custom LMG/Shapley over OLS R2 using numeric outcome coding")
 
     if method == "johnson":
-        return Applicability(True, "custom Johnson relative weights")
+        return Applicability(True, "custom Johnson relative weights using numeric outcome coding")
 
     if method == "random_forest":
         return Applicability(
@@ -77,4 +70,3 @@ def method_applicability(method: str, y_type: str) -> Applicability:
         )
 
     return Applicability(False, "not applicable", f"{method} is not configured.")
-
