@@ -169,6 +169,8 @@ NAME_MAP = {
 }
 BAR_COLORS = ["#F76362", "#C7D8E4", "#789FC0", "#F9BDBC", "#5E7486"]
 DEFAULT_METHODS = ("correlation", "regression")
+DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
+HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
 METHOD_COLORS = {
     "correlation": "#F76362",
     "regression": "#C7D8E4",
@@ -680,7 +682,7 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
         "xgboost": {"n_estimators": 150, "max_depth": 3},
         "shap": {"n_estimators": 150, "max_depth": 3},
     }
-    bootstrap_methods = list(methods) if include_bootstrap else None
+    bootstrap_methods = [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS] if include_bootstrap else None
     bootstrap_params = {"n_resamples": 40, "random_state": 454, "min_valid_resamples": 8} if include_bootstrap else None
 
     try:
@@ -711,6 +713,7 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
             "kda_result": kda_result,
             "warnings": kda_result.warnings,
             "include_bootstrap": include_bootstrap,
+            "bootstrap_methods": bootstrap_methods or [],
         }
 
     subgroup_results = []
@@ -763,6 +766,7 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
         "warnings": kda_result.warnings,
         "kda_result": kda_result,
         "include_bootstrap": include_bootstrap,
+        "bootstrap_methods": bootstrap_methods or [],
     }
 
 def render_dashboard():
@@ -885,10 +889,25 @@ def render_dashboard():
 
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Bootstrap confidence intervals</div>'
-            '<div class="gbk-note">Leave this off for fast exploratory key driver analysis. Turn it on only when you need uncertainty bands for the final chart; it reruns each selected method on bootstrap samples and can be slow when many methods or subgroups are selected.</div></div>',
+            '<div class="gbk-note">Leave this off for fast exploratory key driver analysis. '
+            'When enabled, the app resamples the data 40 times and computes CI bands only for the lighter, more stable methods: '
+            '<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. '
+            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates, but are not bootstrapped by default because each bootstrap sample would refit tree models and SHAP explainers, which can make Streamlit very slow, especially with subgroup analysis.</div></div>',
             unsafe_allow_html=True,
         )
         include_bootstrap = st.checkbox("Calculate bootstrap confidence intervals", value=False, key="dash_bootstrap")
+        selected_bootstrap_methods = [method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS]
+        selected_heavy_methods = [method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS]
+        if include_bootstrap:
+            ci_method_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_bootstrap_methods) or "None"
+            point_only_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_heavy_methods) or "None"
+            st.markdown(
+                f'<div class="gbk-note" style="margin-top:0.5rem;">'
+                f'<b>CI will be calculated for:</b> {ci_method_label}<br>'
+                f'<b>Point-only methods:</b> {point_only_label}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
         st.markdown("<br>", unsafe_allow_html=True)
 

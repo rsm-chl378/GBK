@@ -6,7 +6,9 @@ import pandas as pd
 
 from kda_backend import run_kda
 from GBK_app import (
+    DEFAULT_BOOTSTRAP_METHODS,
     DEFAULT_METHODS,
+    HEAVY_BOOTSTRAP_METHODS,
     METHOD_COLORS,
     _driver_axis_sort,
     build_driver_interval_chart,
@@ -156,8 +158,44 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         )
 
         self.assertTrue(result["include_bootstrap"])
+        self.assertEqual(result["bootstrap_methods"], ["correlation", "regression"])
         self.assertIn("correlation_ci_lower", result["export_table"].columns)
         self.assertIn("regression_ci_lower", result["export_table"].columns)
+
+    def test_run_analysis_does_not_bootstrap_heavy_methods_by_default(self):
+        rng = np.random.default_rng(469)
+        n = 72
+        df_num = pd.DataFrame(
+            {
+                "consideration": rng.normal(size=n),
+                "trust": rng.normal(size=n),
+                "value": rng.normal(size=n),
+                "style": rng.normal(size=n),
+            }
+        )
+        df_num["consideration"] = 1.5 * df_num["trust"] + rng.normal(scale=0.2, size=n)
+        df_raw = df_num.copy()
+
+        methods = ["correlation", "regression", "random_forest", "xgboost", "shap"]
+        result = run_analysis(
+            df_num,
+            df_raw,
+            target="consideration",
+            x_vars=["trust", "value", "style"],
+            sg_var=None,
+            methods=methods,
+            include_bootstrap=True,
+        )
+
+        self.assertTrue(result["include_bootstrap"])
+        self.assertEqual(result["bootstrap_methods"], ["correlation", "regression"])
+        for method in ["correlation", "regression"]:
+            self.assertIn(f"{method}_ci_lower", result["export_table"].columns)
+            self.assertIn(f"{method}_ci_upper", result["export_table"].columns)
+        for method in HEAVY_BOOTSTRAP_METHODS:
+            self.assertIn(method, result["export_table"].columns)
+            self.assertNotIn(f"{method}_ci_lower", result["export_table"].columns)
+            self.assertNotIn(f"{method}_ci_upper", result["export_table"].columns)
 
     def test_prepare_model_data_excludes_brand_lookup_columns_from_subgroup_candidates(self):
         df = pd.DataFrame(
@@ -446,6 +484,11 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
     def test_default_methods_are_correlation_and_regression(self):
         self.assertEqual(DEFAULT_METHODS, ("correlation", "regression"))
+
+    def test_default_bootstrap_methods_exclude_tree_and_shap_methods(self):
+        self.assertEqual(DEFAULT_BOOTSTRAP_METHODS, ("correlation", "regression", "shapley_lmg", "johnson"))
+        self.assertEqual(HEAVY_BOOTSTRAP_METHODS, ("random_forest", "xgboost", "shap"))
+        self.assertTrue(set(DEFAULT_BOOTSTRAP_METHODS).isdisjoint(HEAVY_BOOTSTRAP_METHODS))
 
     def test_each_method_has_distinct_visible_chart_color(self):
         colors = list(METHOD_COLORS.values())
