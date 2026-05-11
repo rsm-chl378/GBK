@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Streamlit frontend for GBK key drivers analysis"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "altair>=5.0.0",
   "matplotlib==3.9.2",
   "numpy==1.26.4",
   "openpyxl==3.1.5",

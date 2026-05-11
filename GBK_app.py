@@ -1,5 +1,8 @@
 import re as _re
 
+import altair as alt
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -147,6 +150,7 @@ def configure_page():
         "uploaded_df_num": None,
         "uploaded_meta": None,
         "uploaded_filename": None,
+        "uploaded_file_signature": None,
         "analysis_result": None,
     }.items():
         if k not in st.session_state:
@@ -164,6 +168,19 @@ NAME_MAP = {
     "C12": "Retailer",
 }
 BAR_COLORS = ["#F76362", "#C7D8E4", "#789FC0", "#F9BDBC", "#5E7486"]
+DEFAULT_METHODS = ("correlation", "regression")
+DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
+HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
+METHOD_COLORS = {
+    "correlation": "#F76362",
+    "regression": "#C7D8E4",
+    "drop_one": "#3B4954",
+    "shapley_lmg": "#D76BA6",
+    "johnson": "#2FA872",
+    "random_forest": "#8B6BD6",
+    "xgboost": "#F0B35A",
+    "shap": "#2CA6A4",
+}
 
 METHOD_LABELS = {
     "correlation": "Correlation",
@@ -210,11 +227,11 @@ METHOD_INFO = {
         "title": "Standardized Regression Coefficients",
         "recommended": False,
         "desc": (
-            "Good for linear relationships. Fits a linear model and ranks by standardized beta weights. "
-            "Interpretable but assumes linearity and can be unstable when predictors are highly correlated "
-            "(multicollinearity)."
+            "Good for linear relationships. Matches the GBK/R style standardized OLS beta calculation "
+            "on numeric outcome coding, so binary consideration outcomes remain comparable with the "
+            "client reference workbook. Interpretable, but unstable when predictors are highly correlated."
         ),
-        "note": "Standardized coefficient |β| — linear importance.",
+        "note": "Standardized coefficient β — signed linear importance.",
     },
     "drop_one": {
         "title": "Drop-one Usefulness",
@@ -225,13 +242,13 @@ METHOD_INFO = {
     "shapley_lmg": {
         "title": "Shapley / LMG",
         "recommended": False,
-        "desc": "Allocates linear model explained variance across drivers. Python v1 supports continuous outcomes.",
+        "desc": "Allocates linear model explained variance across drivers using numeric outcome coding.",
         "note": "LMG share of model R-squared.",
     },
     "johnson": {
         "title": "Johnson Relative Weights",
         "recommended": False,
-        "desc": "Decomposes linear model explanatory power under correlated predictors. Python v1 supports continuous outcomes.",
+        "desc": "Decomposes linear model explanatory power under correlated predictors using numeric outcome coding.",
         "note": "Johnson relative weight.",
     },
     "xgboost": {
@@ -258,26 +275,80 @@ def is_excluded_column(col):
         "marker", "status", "qualityscore", "linercheck", "loi"
     ])
 
+def is_lookup_column(col):
+    name = str(col).lower()
+    return (
+        name.endswith("_code")
+        or name in {"brand_code", "top_brand_name", "ownership_brand_name"}
+        or name.startswith("top_brand")
+        or name.startswith("ownership_brand")
+    )
+
+def is_outcome_column(col):
+    name = str(col).lower()
+    return "consideration" in name or "satisfaction" in name
+
+def is_segment_column(col):
+    name = str(col).lower()
+    segment_tokens = [
+        "gender",
+        "age",
+        "region",
+        "ecosystem",
+        "channel",
+        "frequency",
+        "segment",
+        "country",
+        "market",
+    ]
+    return any(token in name for token in segment_tokens)
+
+def is_driver_column(col):
+    if is_excluded_column(col) or is_lookup_column(col) or is_outcome_column(col) or is_segment_column(col):
+        return False
+    return str(col).lower() != "brand"
+
+def is_subgroup_candidate(df, col):
+    if is_excluded_column(col) or is_lookup_column(col) or is_outcome_column(col):
+        return False
+    unique = df[col].nunique(dropna=True)
+    if unique < 2 or unique > 20:
+        return False
+    if str(col).lower() == "brand":
+        return True
+    if is_segment_column(col):
+        return True
+    return df[col].dtype == object and unique <= 12
+
 def prepare_model_data(df):
     df = df.copy()
     df.columns = [str(c).strip() for c in df.columns]
     excluded_cols = [c for c in df.columns if is_excluded_column(c)]
     df_model = df.drop(columns=excluded_cols, errors="ignore")
     df_num = df_model.select_dtypes(include=["number"]).copy()
+    outcome_candidates = [c for c in df_num.columns if is_outcome_column(c)]
+    driver_candidates = [c for c in df_num.columns if is_driver_column(c)]
+    subgroup_candidates = [c for c in df_model.columns if is_subgroup_candidate(df_model, c)]
+
     missing_ratio = df_num.isna().mean()
     high_missing = missing_ratio[missing_ratio > 0.4].index.tolist()
-    subgroup_candidates, drop_missing_cols = [], []
+    drop_missing_cols = []
     for col in high_missing:
-        (subgroup_candidates if df_num[col].notna().sum() > 30 else drop_missing_cols).append(col)
+        if df_num[col].notna().sum() <= 30:
+            drop_missing_cols.append(col)
     df_num = df_num.drop(columns=drop_missing_cols, errors="ignore")
     constant_cols = df_num.columns[df_num.nunique(dropna=True) <= 1].tolist()
     df_num = df_num.drop(columns=constant_cols, errors="ignore")
+    outcome_candidates = [c for c in outcome_candidates if c in df_num.columns]
+    driver_candidates = [c for c in driver_candidates if c in df_num.columns]
     for col in df_num.columns:
         df_num[col] = df_num[col].fillna(df_num[col].median())
     return df, df_num, {
         "excluded_cols": excluded_cols,
         "drop_missing_cols": drop_missing_cols,
         "subgroup_candidates": subgroup_candidates,
+        "outcome_candidates": outcome_candidates,
+        "driver_candidates": driver_candidates,
         "constant_cols": constant_cols,
     }
 
@@ -299,10 +370,10 @@ def render_method_info_box(method_key):
         unsafe_allow_html=True
     )
 
-def render_bar_chart(top5, title="Top Associated Drivers", method_key=""):
-    max_val = top5.iloc[0] if len(top5) else 1
+def render_bar_chart(driver_scores, title="Driver Importance", method_key=""):
+    max_val = driver_scores.iloc[0] if len(driver_scores) else 1
     bars_html = ""
-    for i, (col, val) in enumerate(top5.items()):
+    for i, (col, val) in enumerate(driver_scores.items()):
         color = BAR_COLORS[i] if i < len(BAR_COLORS) else BAR_COLORS[-1]
         pct = round(val / max_val * 100) if max_val else 0
         bars_html += (
@@ -320,8 +391,195 @@ def render_bar_chart(top5, title="Top Associated Drivers", method_key=""):
         unsafe_allow_html=True
     )
 
-def render_insights(target, top5):
-    names = [display_name(x) for x in top5.index]
+def build_driver_interval_chart(importance_table, methods):
+    method_cols = [method for method in methods if method in importance_table.columns]
+    if not method_cols:
+        method_cols = ["mean_method_index"] if "mean_method_index" in importance_table.columns else []
+    plot_df = importance_table.copy()
+    if "mean_method_index" in plot_df.columns:
+        plot_df = plot_df.sort_values("mean_method_index", ascending=True)
+    elif method_cols:
+        plot_df = plot_df.sort_values(method_cols[0], ascending=True)
+
+    fig_height = max(4.5, 0.5 * len(plot_df) + 1.5)
+    fig, ax = plt.subplots(figsize=(10.5, fig_height))
+    y_pos = np.arange(len(plot_df))
+    offsets = np.linspace(-0.18, 0.18, max(len(method_cols), 1))
+
+    for idx, method in enumerate(method_cols):
+        scores = plot_df[method].to_numpy(dtype=float)
+        y = y_pos + offsets[idx]
+        color = METHOD_COLORS.get(method, BAR_COLORS[idx % len(BAR_COLORS)])
+        lower_col = f"{method}_ci_lower"
+        upper_col = f"{method}_ci_upper"
+        if lower_col in plot_df.columns and upper_col in plot_df.columns:
+            lower = plot_df[lower_col].to_numpy(dtype=float)
+            upper = plot_df[upper_col].to_numpy(dtype=float)
+            left_err = np.where(np.isfinite(lower), scores - lower, 0)
+            right_err = np.where(np.isfinite(upper), upper - scores, 0)
+            ax.errorbar(
+                scores,
+                y,
+                xerr=np.vstack([np.maximum(left_err, 0), np.maximum(right_err, 0)]),
+                fmt="o",
+                color=color,
+                ecolor=color,
+                elinewidth=1.4,
+                capsize=3,
+                markersize=5,
+                label=METHOD_LABELS.get(method, method),
+                alpha=0.95,
+            )
+        else:
+            ax.scatter(scores, y, color=color, s=28, label=METHOD_LABELS.get(method, method), alpha=0.95)
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels([display_name(driver) for driver in plot_df["driver"]])
+    ax.set_xlabel("Importance score")
+    ax.set_ylabel("Driver")
+    ax.set_title("Driver Importance with Bootstrap Confidence Intervals")
+    ax.grid(axis="x", color="#D8E2EA", alpha=0.45)
+    ax.set_facecolor("#FFFFFF")
+    fig.patch.set_facecolor("#FFFFFF")
+    if len(method_cols) > 1:
+        ax.legend(loc="lower right", frameon=False)
+    fig.tight_layout()
+    return fig
+
+def _normalize_like_main_scores(values, main_scores):
+    finite = main_scores.replace([np.inf, -np.inf], np.nan).dropna()
+    out = pd.Series(np.nan, index=values.index, dtype=float)
+    if finite.empty:
+        return out
+    mean_v = finite.mean()
+    if np.isclose(float(mean_v), 0.0):
+        abs_mean = finite.abs().mean()
+        if np.isclose(float(abs_mean), 0.0):
+            return out
+        out.loc[values.index] = values / abs_mean * 100.0
+    else:
+        out.loc[values.index] = values / mean_v * 100.0
+    return out
+
+def build_interactive_chart_data(importance_table, methods):
+    rows = []
+    table = importance_table.copy()
+    sort_col = "mean_method_index" if "mean_method_index" in table.columns else methods[0]
+    table = table.sort_values(sort_col, ascending=False).reset_index(drop=True)
+    driver_order = table["driver"].tolist()
+
+    for method in methods:
+        if method not in table.columns:
+            continue
+        score_col = f"{method}_index"
+        scores = table[score_col] if score_col in table.columns else table[method]
+        lower = pd.Series(np.nan, index=table.index, dtype=float)
+        upper = pd.Series(np.nan, index=table.index, dtype=float)
+        if f"{method}_ci_lower" in table.columns and f"{method}_ci_upper" in table.columns:
+            main_scores = table[method]
+            lower = _normalize_like_main_scores(table[f"{method}_ci_lower"], main_scores)
+            upper = _normalize_like_main_scores(table[f"{method}_ci_upper"], main_scores)
+        for idx, row in table.iterrows():
+            rows.append(
+                {
+                    "driver": row["driver"],
+                    "driver_label": display_name(row["driver"]),
+                    "driver_order": driver_order.index(row["driver"]),
+                    "method": METHOD_LABELS.get(method, method),
+                    "method_key": method,
+                    "score": float(scores.iloc[idx]) if pd.notna(scores.iloc[idx]) else np.nan,
+                    "raw_score": float(row[method]) if pd.notna(row[method]) else np.nan,
+                    "ci_lower": float(lower.iloc[idx]) if pd.notna(lower.iloc[idx]) else np.nan,
+                    "ci_upper": float(upper.iloc[idx]) if pd.notna(upper.iloc[idx]) else np.nan,
+                }
+            )
+    return pd.DataFrame(rows)
+
+def _driver_axis_sort(chart_df):
+    return (
+        chart_df[["driver_label", "driver_order"]]
+        .drop_duplicates()
+        .sort_values("driver_order", ascending=True)["driver_label"]
+        .tolist()
+    )
+
+def build_interactive_driver_chart(importance_table, methods):
+    chart_df = build_interactive_chart_data(importance_table, methods)
+    if chart_df.empty:
+        return None
+
+    domain = [METHOD_LABELS.get(method, method) for method in methods]
+    chart_colors = [METHOD_COLORS.get(method, "#789FC0") for method in methods]
+    y_sort = _driver_axis_sort(chart_df)
+    finite_values = pd.concat(
+        [chart_df["score"], chart_df["ci_lower"].dropna(), chart_df["ci_upper"].dropna()],
+        ignore_index=True,
+    ).replace([np.inf, -np.inf], np.nan).dropna()
+    if finite_values.empty:
+        x_domain = [0, 100]
+    else:
+        min_x = min(0.0, float(finite_values.min()))
+        max_x = max(100.0, float(finite_values.max()))
+        pad = max((max_x - min_x) * 0.08, 5.0)
+        x_domain = [min_x - pad, max_x + pad]
+    nearest = alt.selection_point(name="method_filter", fields=["method"], bind="legend")
+    base = alt.Chart(chart_df).encode(
+        y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
+        color=alt.Color("method:N", scale=alt.Scale(domain=domain, range=chart_colors), title="Method"),
+        opacity=alt.condition(nearest, alt.value(1), alt.value(0.04)),
+        tooltip=[
+            alt.Tooltip("driver_label:N", title="Driver"),
+            alt.Tooltip("method:N", title="Method"),
+            alt.Tooltip("score:Q", title="Index score", format=".1f"),
+            alt.Tooltip("raw_score:Q", title="Raw score", format=".4f"),
+            alt.Tooltip("ci_lower:Q", title="CI lower index", format=".1f"),
+            alt.Tooltip("ci_upper:Q", title="CI upper index", format=".1f"),
+        ],
+    )
+    ci_df = chart_df.dropna(subset=["ci_lower", "ci_upper"])
+    ci = alt.Chart(ci_df).mark_rule(strokeWidth=2).encode(
+        y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
+        x=alt.X("ci_lower:Q", title="Indexed score (average = 100)", scale=alt.Scale(domain=x_domain, zero=False)),
+        x2="ci_upper:Q",
+        color=alt.Color("method:N", scale=alt.Scale(domain=domain, range=chart_colors), title="Method"),
+        opacity=alt.condition(nearest, alt.value(0.75), alt.value(0.04)),
+        tooltip=[
+            alt.Tooltip("driver_label:N", title="Driver"),
+            alt.Tooltip("method:N", title="Method"),
+            alt.Tooltip("ci_lower:Q", title="CI lower index", format=".1f"),
+            alt.Tooltip("ci_upper:Q", title="CI upper index", format=".1f"),
+        ],
+    )
+    points = base.mark_circle(size=90).encode(
+        x=alt.X("score:Q", title="Indexed score (average = 100)", scale=alt.Scale(domain=x_domain, zero=False)),
+    ).add_params(nearest)
+    return (ci + points).properties(height=max(360, 34 * len(y_sort)), width="container")
+
+def render_interval_chart(kda_result, methods, title="Driver importance"):
+    st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
+    chart = build_interactive_driver_chart(kda_result.importance_table, methods)
+    if chart is not None:
+        st.altair_chart(chart, use_container_width=True)
+    ci_methods = [
+        method
+        for method in methods
+        if f"{method}_ci_lower" in kda_result.importance_table.columns
+        and f"{method}_ci_upper" in kda_result.importance_table.columns
+    ]
+    if ci_methods:
+        labels = ", ".join(METHOD_LABELS.get(method, method) for method in ci_methods)
+        st.markdown(
+            f'<div class="gbk-disclaimer">Dots are indexed method scores. Horizontal lines are bootstrap confidence intervals for {labels}. The raw scores remain in the export table.</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="gbk-disclaimer">Dots are indexed method scores. Enable bootstrap before running analysis to add confidence intervals.</div>',
+            unsafe_allow_html=True,
+        )
+
+def render_insights(target, driver_scores):
+    names = [display_name(x) for x in driver_scores.index]
     if not names:
         return
     t = display_name(target)
@@ -340,8 +598,8 @@ def render_insights(target, top5):
         unsafe_allow_html=True
     )
 
-def render_next_steps(target, top5):
-    names = [display_name(x) for x in top5.index]
+def render_next_steps(target, driver_scores):
+    names = [display_name(x) for x in driver_scores.index]
     if not names:
         return
     t = display_name(target)
@@ -388,7 +646,25 @@ def _ranking_to_series(ranking_table):
         index=ranking_table["driver"],
     ).sort_values(ascending=False)
 
-def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods):
+def _importance_export_table(kda_result):
+    order = kda_result.ranking_table["driver"].tolist()
+    table = kda_result.importance_table.copy()
+    table["_sort_order"] = table["driver"].map({driver: idx for idx, driver in enumerate(order)})
+    table = table.sort_values(["_sort_order", "driver"], na_position="last").drop(columns="_sort_order")
+    return table.reset_index(drop=True)
+
+def _combined_subgroup_export_table(kda_result, subgroup_var):
+    rows = []
+    for level, subgroup_result in (kda_result.subgroup_results or {}).items():
+        table = _importance_export_table(subgroup_result).copy()
+        table.insert(0, "subgroup_level", level)
+        table.insert(0, "subgroup_variable", subgroup_var)
+        rows.append(table)
+    if not rows:
+        return pd.DataFrame(columns=["subgroup_variable", "subgroup_level", "driver"])
+    return pd.concat(rows, ignore_index=True)
+
+def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootstrap=False):
     predictors = [c for c in (x_vars if x_vars else df_num.columns) if c != target and c in df_num.columns]
     if not predictors:
         return {"error": "No valid predictor columns available."}
@@ -406,6 +682,8 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods):
         "xgboost": {"n_estimators": 150, "max_depth": 3},
         "shap": {"n_estimators": 150, "max_depth": 3},
     }
+    bootstrap_methods = [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS] if include_bootstrap else None
+    bootstrap_params = {"n_resamples": 40, "random_state": 454, "min_valid_resamples": 8} if include_bootstrap else None
 
     try:
         kda_result = run_kda(
@@ -415,25 +693,34 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods):
             methods=methods,
             subgroup=sg_var,
             method_params=method_params,
+            bootstrap_methods=bootstrap_methods,
+            bootstrap_params=bootstrap_params,
         )
     except Exception as exc:
         return {"error": str(exc)}
 
-    ranked = _ranking_to_series(kda_result.ranking_table)
+    driver_scores = _ranking_to_series(kda_result.ranking_table)
+    export_table = _importance_export_table(kda_result)
     if not sg_var:
         return {
             "mode": "single",
             "target": target,
             "methods": methods,
-            "ranked": ranked,
-            "top5": ranked.head(5),
+            "ranked": driver_scores,
+            "driver_scores": driver_scores,
+            "top5": driver_scores.head(5),
+            "export_table": export_table,
             "kda_result": kda_result,
             "warnings": kda_result.warnings,
+            "include_bootstrap": include_bootstrap,
+            "bootstrap_methods": bootstrap_methods or [],
         }
 
     subgroup_results = []
+    subgroup_summary = kda_result.subgroup_summary
     for group, subgroup_result in (kda_result.subgroup_results or {}).items():
         subgroup_ranked = _ranking_to_series(subgroup_result.ranking_table)
+        subgroup_export_table = _importance_export_table(subgroup_result)
         subgroup_n = subgroup_result.diagnostics.loc[
             subgroup_result.diagnostics["metric"] == "rows_used",
             "value",
@@ -444,17 +731,42 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods):
                 "n": subgroup_n,
                 "skipped": False,
                 "ranked": subgroup_ranked,
+                "driver_scores": subgroup_ranked,
                 "top5": subgroup_ranked.head(5),
+                "export_table": subgroup_export_table,
+                "kda_result": subgroup_result,
             }
         )
+    if subgroup_summary is not None:
+        existing = {str(item["group"]) for item in subgroup_results}
+        for _, row in subgroup_summary.iterrows():
+            level = str(row["subgroup_level"])
+            if level in existing:
+                continue
+            subgroup_results.append(
+                {
+                    "group": level,
+                    "n": int(row["rows_used"]),
+                    "skipped": True,
+                    "reason": row["reason"],
+                    "ranked": pd.Series(dtype=float),
+                    "driver_scores": pd.Series(dtype=float),
+                    "top5": pd.Series(dtype=float),
+                    "export_table": pd.DataFrame(),
+                    "kda_result": None,
+                }
+            )
     return {
         "mode": "subgroup",
         "target": target,
         "methods": methods,
         "sg_var": sg_var,
         "results": subgroup_results,
+        "subgroup_export_table": _combined_subgroup_export_table(kda_result, sg_var),
         "warnings": kda_result.warnings,
         "kda_result": kda_result,
+        "include_bootstrap": include_bootstrap,
+        "bootstrap_methods": bootstrap_methods or [],
     }
 
 def render_dashboard():
@@ -472,13 +784,22 @@ def render_dashboard():
     uploaded_file = st.file_uploader("Upload .xlsx", type=["xlsx"], key="dashboard_upload", label_visibility="collapsed")
 
     if uploaded_file:
+        file_signature = (uploaded_file.name, getattr(uploaded_file, "size", None))
+        if st.session_state.uploaded_file_signature == file_signature:
+            df_raw = st.session_state.uploaded_df_raw
+            df_num = st.session_state.uploaded_df_num
+            meta = st.session_state.uploaded_meta
+        else:
+            df_raw = df_num = meta = None
         try:
-            df_raw, df_num, meta = prepare_model_data(pd.read_excel(uploaded_file))
-            st.session_state.uploaded_df_raw = df_raw
-            st.session_state.uploaded_df_num = df_num
-            st.session_state.uploaded_meta = meta
-            st.session_state.uploaded_filename = uploaded_file.name
-            st.session_state.analysis_result = None
+            if df_raw is None or df_num is None or meta is None:
+                df_raw, df_num, meta = prepare_model_data(pd.read_excel(uploaded_file))
+                st.session_state.uploaded_df_raw = df_raw
+                st.session_state.uploaded_df_num = df_num
+                st.session_state.uploaded_meta = meta
+                st.session_state.uploaded_filename = uploaded_file.name
+                st.session_state.uploaded_file_signature = file_signature
+                st.session_state.analysis_result = None
         except Exception as e:
             st.error(f"Error loading file: {e}")
 
@@ -498,46 +819,47 @@ def render_dashboard():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    y_options = df_num.columns.tolist()
-    raw_cats = [c for c in df_raw.columns if df_raw[c].dtype == object or (df_raw[c].nunique() <= 10 and c not in y_options)]
+    y_options = meta.get("outcome_candidates") or df_num.columns.tolist()
+    driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in y_options]
+    compare_options = meta.get("subgroup_candidates") or []
 
-    with st.form("analysis_form"):
+    with st.container():
 
         # Step 1
-        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Outcome variable (Y)</div><div class="gbk-note">The metric you want to explain — e.g. overall satisfaction, consideration.</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Outcome variable (Y)</div><div class="gbk-note">Select the business outcome you want to explain. If no likely outcome name is detected, all numeric columns are available here.</div></div>', unsafe_allow_html=True)
         y_var = st.selectbox("Y variable", ["(select)"] + y_options, format_func=lambda c: display_name(c) if c != "(select)" else "— select outcome —", label_visibility="collapsed", key="dash_y")
         y_selected = y_var if y_var != "(select)" else None
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Step 2
-        x_options = [c for c in y_options if c != y_selected]
+        x_options = [c for c in driver_candidates if c != y_selected]
         n_x = len(x_options)
         if n_x > 30:
-            x_hint = f'<div class="gbk-input-warning">⚠ {n_x} numeric columns detected. Dan recommends selecting ~12 key brand image X variables rather than running all columns through the model.</div>'
+            x_hint = f'<div class="gbk-input-warning">⚠ {n_x} numeric columns detected. For cleaner KDA output, select the core driver variables instead of every numeric field.</div>'
         else:
             x_hint = f'<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">{n_x} numeric variable{"s" if n_x!=1 else ""} available.</div>'
 
         st.markdown(
             f'<div class="gbk-panel"><div class="gbk-panel-title">Step 2 · Predictor variables (X)</div>'
-            f'<div class="gbk-note">Select specific drivers — recommended: ~10–12 brand image variables. Leave empty to use all available.</div>'
+            f'<div class="gbk-note">Choose the driver variables to compare. Leave empty to use all detected numeric driver columns.</div>'
             f'{x_hint}</div>',
             unsafe_allow_html=True
         )
-        x_vars = st.multiselect("X variables", x_options, format_func=display_name, label_visibility="collapsed", key="dash_x", placeholder="All variables (default) — selecting ~12 key variables is recommended")
+        x_vars = st.multiselect("X variables", x_options, default=x_options[:12], format_func=display_name, label_visibility="collapsed", key="dash_x", placeholder="Detected brand image statements")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Step 3
-        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Subgroup loop (optional)</div><div class="gbk-note">Run driver analysis separately for each level of one categorical variable (e.g. brand, region). One grouping variable at a time.</div></div>', unsafe_allow_html=True)
-        use_sg = st.checkbox("Enable subgroup loop", key="dash_use_sg")
+        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Compare results by group (optional)</div><div class="gbk-note">This repeats the same 1Y + 12X analysis within each selected group. Use <b>brand</b> for brand-by-brand drivers, or demographic fields such as Gender, Age Range, region, ecosystem, purchase channel, or drop frequency. Brand lookup fields like top brand and ownership brand are intentionally hidden.</div></div>', unsafe_allow_html=True)
+        use_sg = st.checkbox("Compare results by group", key="dash_use_sg")
         sg_var = None
         if use_sg:
-            if raw_cats:
-                sg_raw = st.selectbox("Grouping variable", ["(select)"] + raw_cats, label_visibility="collapsed", key="dash_sg")
+            if compare_options:
+                sg_raw = st.selectbox("Compare by", ["(select)"] + compare_options, format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)" if c != "(select)" else "— choose brand or segment —", label_visibility="collapsed", key="dash_sg")
                 sg_var = sg_raw if sg_raw != "(select)" else None
             else:
-                st.markdown('<div class="gbk-note">No suitable categorical columns detected.</div>', unsafe_allow_html=True)
+                st.markdown('<div class="gbk-note">No suitable brand or segment columns detected.</div>', unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -548,7 +870,7 @@ def render_dashboard():
             'The backend will run selected methods and return a combined ranking.</div></div>',
             unsafe_allow_html=True
         )
-        default_methods = {"correlation", "regression", "random_forest", "xgboost", "shap"}
+        default_methods = set(DEFAULT_METHODS)
         selected_methods = []
         method_cols = st.columns(2)
         for idx, method_key in enumerate(ALL_METHODS):
@@ -565,11 +887,36 @@ def render_dashboard():
 
         st.markdown("<br>", unsafe_allow_html=True)
 
+        st.markdown(
+            '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Bootstrap confidence intervals</div>'
+            '<div class="gbk-note">Leave this off for fast exploratory key driver analysis. '
+            'When enabled, the app resamples the data 40 times and computes CI bands only for the lighter, more stable methods: '
+            '<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. '
+            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates, but are not bootstrapped by default because each bootstrap sample would refit tree models and SHAP explainers, which can make Streamlit very slow, especially with subgroup analysis.</div></div>',
+            unsafe_allow_html=True,
+        )
+        include_bootstrap = st.checkbox("Calculate bootstrap confidence intervals", value=False, key="dash_bootstrap")
+        selected_bootstrap_methods = [method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS]
+        selected_heavy_methods = [method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS]
+        if include_bootstrap:
+            ci_method_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_bootstrap_methods) or "None"
+            point_only_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_heavy_methods) or "None"
+            st.markdown(
+                f'<div class="gbk-note" style="margin-top:0.5rem;">'
+                f'<b>CI will be calculated for:</b> {ci_method_label}<br>'
+                f'<b>Point-only methods:</b> {point_only_label}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Pipeline summary
         x_label = ", ".join(display_name(c) for c in x_vars) if x_vars else "All variables"
-        sg_label = f"Loop by {sg_var}" if use_sg and sg_var else "None"
+        sg_label = f"Compare by {display_name(sg_var)}" if use_sg and sg_var else "Overall only"
         y_label = display_name(y_selected) if y_selected else "Not selected"
         method_label = ", ".join(METHOD_LABELS.get(m, m) for m in selected_methods) if selected_methods else "None"
+        ci_label = "On" if include_bootstrap else "Off"
         st.markdown(f"""
         <div class="gbk-panel" style="border-color:rgba(232,80,58,0.3);">
           <div class="gbk-panel-title">Pipeline summary</div>
@@ -577,16 +924,16 @@ def render_dashboard():
             <div><div class="gbk-summary-key">Y</div><div class="gbk-summary-val">{y_label}</div></div>
             <div><div class="gbk-summary-key">X vars</div><div class="gbk-summary-val">{x_label}</div></div>
             <div><div class="gbk-summary-key">Subgroup</div><div class="gbk-summary-val">{sg_label}</div></div>
-            <div><div class="gbk-summary-key">Methods</div><div class="gbk-summary-val">{method_label}</div></div>
+            <div><div class="gbk-summary-key">Methods / CI</div><div class="gbk-summary-val">{method_label}<br>Bootstrap: {ci_label}</div></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            run_clicked = st.form_submit_button("Run Analysis", use_container_width=True)
+            run_clicked = st.button("Run Analysis", use_container_width=True)
         with btn_col2:
-            clear_clicked = st.form_submit_button("Clear Results", use_container_width=True)
+            clear_clicked = st.button("Clear Results", use_container_width=True)
 
     if clear_clicked:
         st.session_state.analysis_result = None
@@ -596,7 +943,15 @@ def render_dashboard():
             st.error("Please select an outcome variable (Y).")
         else:
             with st.spinner(f"Running {method_label}..."):
-                result = run_analysis(df_num, df_raw, y_selected, x_vars or None, sg_var, selected_methods)
+                result = run_analysis(
+                    df_num,
+                    df_raw,
+                    y_selected,
+                    x_vars or None,
+                    sg_var,
+                    selected_methods,
+                    include_bootstrap=include_bootstrap,
+                )
             st.session_state.analysis_result = result
 
     result = st.session_state.analysis_result
@@ -605,19 +960,45 @@ def render_dashboard():
         if "error" in result:
             st.error(result["error"])
         elif result["mode"] == "single":
-            note_method = result["methods"][0] if len(result["methods"]) == 1 else ""
-            render_bar_chart(result["top5"], method_key=note_method)
-            render_insights(result["target"], result["top5"])
-            render_next_steps(result["target"], result["top5"])
+            display_methods = st.multiselect(
+                "Methods shown in chart",
+                result["methods"],
+                default=result["methods"],
+                format_func=lambda method: METHOD_LABELS.get(method, method),
+                key="single_chart_methods",
+            )
+            render_interval_chart(
+                result["kda_result"],
+                display_methods or result["methods"],
+                title="Interactive driver comparison",
+            )
+            render_insights(result["target"], result["driver_scores"])
+            render_next_steps(result["target"], result["driver_scores"])
             for warning in result.get("warnings", []):
                 st.warning(warning)
-            with st.expander("Full driver ranking"):
-                render_detail_table(result["ranked"])
+            with st.expander("Actual score export table"):
+                st.dataframe(result["export_table"], use_container_width=True)
+                st.download_button(
+                    "Download actual scores CSV",
+                    result["export_table"].to_csv(index=False).encode("utf-8"),
+                    file_name="driver_actual_scores.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+            with st.expander("Ranking summary"):
+                render_detail_table(result["driver_scores"])
                 st.dataframe(result["kda_result"].ranking_table, use_container_width=True)
             with st.expander("Method diagnostics"):
                 st.dataframe(result["kda_result"].diagnostics, use_container_width=True)
         elif result["mode"] == "subgroup":
-            st.markdown(f'<div class="gbk-panel"><div class="gbk-panel-title">Subgroup loop · {_auto_label(result["sg_var"])}</div><div class="gbk-note">Running analysis separately for each level of <b>{_auto_label(result["sg_var"])}</b>.</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div><div class="gbk-note">Each section repeats the same selected Y and X variables within one <b>{_auto_label(result["sg_var"])}</b> group.</div></div>', unsafe_allow_html=True)
+            display_methods = st.multiselect(
+                "Methods shown in subgroup charts",
+                result["methods"],
+                default=result["methods"],
+                format_func=lambda method: METHOD_LABELS.get(method, method),
+                key="subgroup_chart_methods",
+            )
             for warning in result.get("warnings", []):
                 st.warning(warning)
             for item in result["results"]:
@@ -625,8 +1006,22 @@ def render_dashboard():
                     st.markdown(f'<div class="gbk-note" style="margin:6px 0;color:rgba(255,255,255,0.3);">Skipping <b>{item["group"]}</b> — only {item["n"]} respondents.</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div style="font-size:13px;font-weight:700;color:#E8503A;margin:1rem 0 0.25rem;text-transform:uppercase;letter-spacing:1.5px;">{_auto_label(result["sg_var"])}: {item["group"]} · n={item["n"]:,}</div>', unsafe_allow_html=True)
-                    render_bar_chart(item["top5"], title=f"Top Drivers — {item['group']}", method_key="")
-            with st.expander("Combined ranking table"):
+                    render_interval_chart(
+                        item["kda_result"],
+                        display_methods or result["methods"],
+                        title=f"All drivers — {item['group']}",
+                    )
+                    st.dataframe(item["export_table"], use_container_width=True)
+            with st.expander("Combined subgroup score export"):
+                st.dataframe(result["subgroup_export_table"], use_container_width=True)
+                st.download_button(
+                    "Download subgroup actual scores CSV",
+                    result["subgroup_export_table"].to_csv(index=False).encode("utf-8"),
+                    file_name="subgroup_driver_actual_scores.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                )
+            with st.expander("Overall ranking summary"):
                 st.dataframe(result["kda_result"].ranking_table, use_container_width=True)
 
     with st.expander("Raw data preview"):
