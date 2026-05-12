@@ -67,6 +67,29 @@ White      #FFFFFF
 .gbk-method-desc { font-size: 12px; color: rgba(255,255,255,0.80); line-height: 1.55; }
 .gbk-shap-badge { display: inline-block; background: rgba(247,99,98,0.16); border: 1px solid rgba(247,99,98,0.42); color: #F76362; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
 .gbk-input-warning { font-size: 11px; color: #F76362; margin-top: 6px; font-weight: 600; }
+.gbk-warning-card { background: rgba(247,99,98,0.10); border: 1px solid rgba(247,99,98,0.35); border-left: 4px solid #F76362; border-radius: 8px; padding: 0.8rem 1rem; margin: 0.6rem 0; color: rgba(255,255,255,0.86); font-size: 13px; line-height: 1.55; }
+.gbk-warning-card b { color: #FFFFFF; }
+.gbk-subtle-rule { border-top: 1px solid rgba(199,216,228,0.16); margin: 0.75rem 0; }
+
+/* Streamlit widget labels on the dark GBK surface */
+label,
+label p,
+label span,
+div[data-testid="stWidgetLabel"],
+div[data-testid="stWidgetLabel"] p,
+div[data-testid="stWidgetLabel"] span,
+div[data-testid="stMarkdownContainer"] p,
+div[data-testid="stMarkdownContainer"] li {
+  color: rgba(255,255,255,0.86) !important;
+}
+div[data-testid="stWidgetLabel"] {
+  margin-bottom: 0.35rem !important;
+}
+div[data-testid="InputInstructions"],
+div[data-testid="stTooltipHoverTarget"],
+div[data-testid="stHelp"] {
+  color: rgba(199,216,228,0.78) !important;
+}
 
 div[data-testid="stButton"] > button,
 div[data-testid="stFormSubmitButton"] > button {
@@ -92,10 +115,74 @@ div[data-testid="stSelectbox"] > div > div {
   border-radius: 8px !important;
   color: #FFFFFF !important;
 }
+div[data-baseweb="select"] span,
+div[data-baseweb="select"] input,
+div[data-testid="stSelectbox"] span,
+div[data-testid="stSelectbox"] input,
+div[data-testid="stMultiSelect"] span,
+div[data-testid="stMultiSelect"] input {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+div[data-baseweb="select"] input::placeholder,
+div[data-testid="stSelectbox"] input::placeholder,
+div[data-testid="stMultiSelect"] input::placeholder {
+  color: rgba(255,255,255,0.64) !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.64) !important;
+  opacity: 1 !important;
+}
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] *,
+div[data-baseweb="menu"],
+div[data-baseweb="menu"] *,
+div[role="listbox"],
+div[role="listbox"] *,
+ul[role="listbox"],
+ul[role="listbox"] *,
+li[role="option"],
+li[role="option"] * {
+  color: #1F2D36 !important;
+  -webkit-text-fill-color: #1F2D36 !important;
+}
+div[data-baseweb="popover"] div[aria-selected="true"],
+div[data-baseweb="popover"] div[aria-selected="true"] *,
+div[role="listbox"] div[aria-selected="true"],
+div[role="listbox"] div[aria-selected="true"] * {
+  background: #E9EEF2 !important;
+  color: #1F2D36 !important;
+  -webkit-text-fill-color: #1F2D36 !important;
+}
 div[data-testid="stMultiSelect"] > div {
   background: #334651 !important;
   border: 1px solid rgba(199,216,228,0.24) !important;
   border-radius: 8px !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] div,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] span,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] input {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] input::placeholder,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true"],
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true"] * {
+  color: rgba(255,255,255,0.74) !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.74) !important;
+  opacity: 1 !important;
+}
+
+div[data-testid="stNumberInput"] label,
+div[data-testid="stNumberInput"] label p,
+div[data-testid="stNumberInput"] label span {
+  color: rgba(255,255,255,0.86) !important;
+}
+div[data-testid="stNumberInput"] input {
+  color: #1F2D36 !important;
+  -webkit-text-fill-color: #1F2D36 !important;
+}
+div[data-testid="stNumberInput"] button {
+  color: #1F2D36 !important;
 }
 
 div[data-testid="stFileUploader"] section {
@@ -116,10 +203,25 @@ details {
   border-radius: 10px !important;
   margin-bottom: 1rem !important;
 }
+details[open] {
+  background: #334651 !important;
+}
 details summary {
   font-size: 12px !important;
-  color: rgba(255,255,255,0.76) !important;
+  background: #334651 !important;
+  color: rgba(255,255,255,0.88) !important;
   padding: 0.75rem 1rem !important;
+  border-radius: 10px !important;
+}
+details summary *,
+details summary p,
+details summary span,
+details summary svg {
+  color: rgba(255,255,255,0.88) !important;
+  fill: rgba(255,255,255,0.88) !important;
+}
+details > div {
+  background: #334651 !important;
 }
 
 div[data-testid="stDataFrame"] { background: #334651 !important; border-radius: 8px !important; }
@@ -150,6 +252,8 @@ def configure_page():
         "uploaded_df_num": None,
         "uploaded_meta": None,
         "uploaded_filename": None,
+        "uploaded_sheet_name": None,
+        "uploaded_sheet_names": None,
         "uploaded_file_signature": None,
         "analysis_result": None,
     }.items():
@@ -171,6 +275,7 @@ BAR_COLORS = ["#F76362", "#C7D8E4", "#789FC0", "#F9BDBC", "#5E7486"]
 DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
+DEFAULT_BOOTSTRAP_RESAMPLES = 40
 METHOD_COLORS = {
     "correlation": "#F76362",
     "regression": "#C7D8E4",
@@ -503,7 +608,7 @@ def _driver_axis_sort(chart_df):
         .tolist()
     )
 
-def build_interactive_driver_chart(importance_table, methods):
+def build_interactive_driver_chart(importance_table, methods, x_domain_override=None):
     chart_df = build_interactive_chart_data(importance_table, methods)
     if chart_df.empty:
         return None
@@ -522,6 +627,8 @@ def build_interactive_driver_chart(importance_table, methods):
         max_x = max(100.0, float(finite_values.max()))
         pad = max((max_x - min_x) * 0.08, 5.0)
         x_domain = [min_x - pad, max_x + pad]
+    if x_domain_override:
+        x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
     nearest = alt.selection_point(name="method_filter", fields=["method"], bind="legend")
     base = alt.Chart(chart_df).encode(
         y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
@@ -555,11 +662,11 @@ def build_interactive_driver_chart(importance_table, methods):
     ).add_params(nearest)
     return (ci + points).properties(height=max(360, 34 * len(y_sort)), width="container")
 
-def render_interval_chart(kda_result, methods, title="Driver importance"):
+def render_interval_chart(kda_result, methods, title="Driver importance", chart_x_domain=None):
     st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
-    chart = build_interactive_driver_chart(kda_result.importance_table, methods)
+    chart = build_interactive_driver_chart(kda_result.importance_table, methods, chart_x_domain)
     if chart is not None:
-        st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(chart, width="stretch")
     ci_methods = [
         method
         for method in methods
@@ -576,6 +683,33 @@ def render_interval_chart(kda_result, methods, title="Driver importance"):
         st.markdown(
             '<div class="gbk-disclaimer">Dots are indexed method scores. Enable bootstrap before running analysis to add confidence intervals.</div>',
             unsafe_allow_html=True,
+        )
+
+def chart_range_control(kda_result, methods, key_prefix):
+    chart_df = build_interactive_chart_data(kda_result.importance_table, methods)
+    if chart_df.empty:
+        return None
+    finite_values = pd.concat(
+        [chart_df["score"], chart_df["ci_lower"].dropna(), chart_df["ci_upper"].dropna()],
+        ignore_index=True,
+    ).replace([np.inf, -np.inf], np.nan).dropna()
+    if finite_values.empty:
+        return None
+    min_x = min(0.0, float(finite_values.min()))
+    max_x = max(100.0, float(finite_values.max()))
+    pad = max((max_x - min_x) * 0.12, 10.0)
+    full_domain = (float(np.floor(min_x - pad)), float(np.ceil(max_x + pad)))
+    with st.expander("Chart controls"):
+        auto_range = st.checkbox("Auto x-axis range", value=True, key=f"{key_prefix}_auto_range")
+        if auto_range:
+            return None
+        return st.slider(
+            "Visible index range",
+            min_value=full_domain[0],
+            max_value=full_domain[1],
+            value=full_domain,
+            step=1.0,
+            key=f"{key_prefix}_x_range",
         )
 
 def render_insights(target, driver_scores):
@@ -646,12 +780,35 @@ def _ranking_to_series(ranking_table):
         index=ranking_table["driver"],
     ).sort_values(ascending=False)
 
+def _importance_to_series(importance_table):
+    table = importance_table.copy()
+    if "mean_method_index" in table.columns:
+        score_col = "mean_method_index"
+    else:
+        method_cols = [
+            col for col in table.columns
+            if col not in {"driver", "average_rank", "median_rank", "top3_appearances"}
+            and not col.endswith(("_index", "_rank", "_warning", "_ci_lower", "_ci_upper"))
+            and pd.api.types.is_numeric_dtype(table[col])
+        ]
+        if not method_cols:
+            return pd.Series(dtype=float)
+        score_col = method_cols[0]
+    return pd.Series(table[score_col].to_numpy(), index=table["driver"]).sort_values(ascending=False)
+
 def _importance_export_table(kda_result):
-    order = kda_result.ranking_table["driver"].tolist()
     table = kda_result.importance_table.copy()
-    table["_sort_order"] = table["driver"].map({driver: idx for idx, driver in enumerate(order)})
-    table = table.sort_values(["_sort_order", "driver"], na_position="last").drop(columns="_sort_order")
+    if "mean_method_index" in table.columns:
+        table = table.sort_values(["mean_method_index", "driver"], ascending=[False, True], na_position="last")
+    else:
+        table = table.sort_values("driver")
     return table.reset_index(drop=True)
+
+def _subgroup_summary_table(kda_result):
+    if kda_result.subgroup_summary is None:
+        return pd.DataFrame(columns=["subgroup_level", "rows_used", "status", "reason"])
+    cols = ["subgroup_level", "rows_used", "status", "reason"]
+    return kda_result.subgroup_summary[cols].copy()
 
 def _combined_subgroup_export_table(kda_result, subgroup_var):
     rows = []
@@ -664,7 +821,16 @@ def _combined_subgroup_export_table(kda_result, subgroup_var):
         return pd.DataFrame(columns=["subgroup_variable", "subgroup_level", "driver"])
     return pd.concat(rows, ignore_index=True)
 
-def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootstrap=False):
+def run_analysis(
+    df_num,
+    df_raw,
+    target,
+    x_vars,
+    sg_var,
+    methods,
+    include_bootstrap=False,
+    bootstrap_resamples=DEFAULT_BOOTSTRAP_RESAMPLES,
+):
     predictors = [c for c in (x_vars if x_vars else df_num.columns) if c != target and c in df_num.columns]
     if not predictors:
         return {"error": "No valid predictor columns available."}
@@ -683,7 +849,11 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
         "shap": {"n_estimators": 150, "max_depth": 3},
     }
     bootstrap_methods = [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS] if include_bootstrap else None
-    bootstrap_params = {"n_resamples": 40, "random_state": 454, "min_valid_resamples": 8} if include_bootstrap else None
+    bootstrap_params = {
+        "n_resamples": int(bootstrap_resamples),
+        "random_state": 454,
+        "min_valid_resamples": 8,
+    } if include_bootstrap else None
 
     try:
         kda_result = run_kda(
@@ -699,7 +869,7 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
     except Exception as exc:
         return {"error": str(exc)}
 
-    driver_scores = _ranking_to_series(kda_result.ranking_table)
+    driver_scores = _importance_to_series(kda_result.importance_table)
     export_table = _importance_export_table(kda_result)
     if not sg_var:
         return {
@@ -714,12 +884,13 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
             "warnings": kda_result.warnings,
             "include_bootstrap": include_bootstrap,
             "bootstrap_methods": bootstrap_methods or [],
+            "bootstrap_resamples": int(bootstrap_resamples) if include_bootstrap else 0,
         }
 
     subgroup_results = []
     subgroup_summary = kda_result.subgroup_summary
     for group, subgroup_result in (kda_result.subgroup_results or {}).items():
-        subgroup_ranked = _ranking_to_series(subgroup_result.ranking_table)
+        subgroup_ranked = _importance_to_series(subgroup_result.importance_table)
         subgroup_export_table = _importance_export_table(subgroup_result)
         subgroup_n = subgroup_result.diagnostics.loc[
             subgroup_result.diagnostics["metric"] == "rows_used",
@@ -763,10 +934,12 @@ def run_analysis(df_num, df_raw, target, x_vars, sg_var, methods, include_bootst
         "sg_var": sg_var,
         "results": subgroup_results,
         "subgroup_export_table": _combined_subgroup_export_table(kda_result, sg_var),
+        "subgroup_summary": _subgroup_summary_table(kda_result),
         "warnings": kda_result.warnings,
         "kda_result": kda_result,
         "include_bootstrap": include_bootstrap,
         "bootstrap_methods": bootstrap_methods or [],
+        "bootstrap_resamples": int(bootstrap_resamples) if include_bootstrap else 0,
     }
 
 def render_dashboard():
@@ -784,20 +957,51 @@ def render_dashboard():
     uploaded_file = st.file_uploader("Upload .xlsx", type=["xlsx"], key="dashboard_upload", label_visibility="collapsed")
 
     if uploaded_file:
-        file_signature = (uploaded_file.name, getattr(uploaded_file, "size", None))
-        if st.session_state.uploaded_file_signature == file_signature:
+        base_signature = (uploaded_file.name, getattr(uploaded_file, "size", None))
+        sheet_names = st.session_state.uploaded_sheet_names
+        if st.session_state.uploaded_file_signature and st.session_state.uploaded_file_signature[:2] == base_signature:
+            sheet_names = sheet_names or [st.session_state.uploaded_sheet_name]
+        else:
+            try:
+                uploaded_file.seek(0)
+                sheet_names = pd.ExcelFile(uploaded_file).sheet_names
+                st.session_state.uploaded_sheet_names = sheet_names
+            except Exception as e:
+                sheet_names = None
+                st.error(f"Error reading workbook sheets: {e}")
+
+        selected_sheet = None
+        if sheet_names:
+            if len(sheet_names) > 1:
+                selected_sheet = st.selectbox(
+                    "Excel sheet",
+                    sheet_names,
+                    index=0,
+                    key=f"sheet_select_{base_signature[0]}_{base_signature[1]}",
+                )
+            else:
+                selected_sheet = sheet_names[0]
+                st.markdown(
+                    f'<div class="gbk-note" style="font-size:12px;color:rgba(255,255,255,0.50);">Sheet: <b>{selected_sheet}</b></div>',
+                    unsafe_allow_html=True,
+                )
+
+        file_signature = (*base_signature, selected_sheet)
+        if selected_sheet and st.session_state.uploaded_file_signature == file_signature:
             df_raw = st.session_state.uploaded_df_raw
             df_num = st.session_state.uploaded_df_num
             meta = st.session_state.uploaded_meta
         else:
             df_raw = df_num = meta = None
         try:
-            if df_raw is None or df_num is None or meta is None:
-                df_raw, df_num, meta = prepare_model_data(pd.read_excel(uploaded_file))
+            if selected_sheet and (df_raw is None or df_num is None or meta is None):
+                uploaded_file.seek(0)
+                df_raw, df_num, meta = prepare_model_data(pd.read_excel(uploaded_file, sheet_name=selected_sheet))
                 st.session_state.uploaded_df_raw = df_raw
                 st.session_state.uploaded_df_num = df_num
                 st.session_state.uploaded_meta = meta
                 st.session_state.uploaded_filename = uploaded_file.name
+                st.session_state.uploaded_sheet_name = selected_sheet
                 st.session_state.uploaded_file_signature = file_signature
                 st.session_state.analysis_result = None
         except Exception as e:
@@ -822,6 +1026,33 @@ def render_dashboard():
     y_options = meta.get("outcome_candidates") or df_num.columns.tolist()
     driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in y_options]
     compare_options = meta.get("subgroup_candidates") or []
+
+    with st.expander("Advanced column setup"):
+        st.markdown(
+            '<div class="gbk-note">Use these controls when the automatic column detection needs a light correction. The backend still receives only the selected Y, X, and subgroup fields from the final setup below.</div>',
+            unsafe_allow_html=True,
+        )
+        y_options = st.multiselect(
+            "Outcome candidate columns",
+            df_num.columns.tolist(),
+            default=[c for c in y_options if c in df_num.columns],
+            format_func=display_name,
+            key="advanced_y_candidates",
+        ) or y_options
+        driver_candidates = st.multiselect(
+            "Driver candidate columns",
+            [c for c in df_num.columns if c not in y_options],
+            default=[c for c in driver_candidates if c in df_num.columns and c not in y_options],
+            format_func=display_name,
+            key="advanced_x_candidates",
+        ) or driver_candidates
+        compare_options = st.multiselect(
+            "Subgroup candidate columns",
+            df_raw.columns.tolist(),
+            default=[c for c in compare_options if c in df_raw.columns],
+            format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)",
+            key="advanced_subgroup_candidates",
+        ) or compare_options
 
     with st.container():
 
@@ -890,15 +1121,26 @@ def render_dashboard():
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Bootstrap confidence intervals</div>'
             '<div class="gbk-note">Leave this off for fast exploratory key driver analysis. '
-            'When enabled, the app resamples the data 40 times and computes CI bands only for the lighter, more stable methods: '
+            f'When enabled, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times by default and computes CI bands only for the lighter, more stable methods: '
             '<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. '
-            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates, but are not bootstrapped by default because each bootstrap sample would refit tree models and SHAP explainers, which can make Streamlit very slow, especially with subgroup analysis.</div></div>',
+            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates, but are not bootstrapped by default because each resample would refit tree ensembles and, for SHAP, rebuild explanations. That cost multiplies quickly across subgroups, so these methods stay point-only unless we add a deliberately slower advanced path.</div></div>',
             unsafe_allow_html=True,
         )
         include_bootstrap = st.checkbox("Calculate bootstrap confidence intervals", value=False, key="dash_bootstrap")
+        bootstrap_resamples = DEFAULT_BOOTSTRAP_RESAMPLES
         selected_bootstrap_methods = [method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS]
         selected_heavy_methods = [method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS]
         if include_bootstrap:
+            with st.expander("Bootstrap controls"):
+                bootstrap_resamples = st.number_input(
+                    "Bootstrap resamples",
+                    min_value=20,
+                    max_value=300,
+                    value=DEFAULT_BOOTSTRAP_RESAMPLES,
+                    step=10,
+                    help="More resamples make intervals smoother but slower. Subgroup runs multiply this cost by the number of included groups.",
+                    key="bootstrap_resamples",
+                )
             ci_method_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_bootstrap_methods) or "None"
             point_only_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_heavy_methods) or "None"
             st.markdown(
@@ -931,9 +1173,9 @@ def render_dashboard():
 
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            run_clicked = st.button("Run Analysis", use_container_width=True)
+            run_clicked = st.button("Run Analysis", width="stretch")
         with btn_col2:
-            clear_clicked = st.button("Clear Results", use_container_width=True)
+            clear_clicked = st.button("Clear Results", width="stretch")
 
     if clear_clicked:
         st.session_state.analysis_result = None
@@ -951,6 +1193,7 @@ def render_dashboard():
                     sg_var,
                     selected_methods,
                     include_bootstrap=include_bootstrap,
+                    bootstrap_resamples=bootstrap_resamples,
                 )
             st.session_state.analysis_result = result
 
@@ -967,29 +1210,32 @@ def render_dashboard():
                 format_func=lambda method: METHOD_LABELS.get(method, method),
                 key="single_chart_methods",
             )
+            active_methods = display_methods or result["methods"]
+            chart_x_domain = chart_range_control(result["kda_result"], active_methods, "single_chart")
             render_interval_chart(
                 result["kda_result"],
-                display_methods or result["methods"],
+                active_methods,
                 title="Interactive driver comparison",
+                chart_x_domain=chart_x_domain,
             )
             render_insights(result["target"], result["driver_scores"])
             render_next_steps(result["target"], result["driver_scores"])
             for warning in result.get("warnings", []):
                 st.warning(warning)
             with st.expander("Actual score export table"):
-                st.dataframe(result["export_table"], use_container_width=True)
+                st.dataframe(result["export_table"], width="stretch")
                 st.download_button(
                     "Download actual scores CSV",
                     result["export_table"].to_csv(index=False).encode("utf-8"),
                     file_name="driver_actual_scores.csv",
                     mime="text/csv",
-                    use_container_width=True,
+                    width="stretch",
                 )
             with st.expander("Ranking summary"):
                 render_detail_table(result["driver_scores"])
-                st.dataframe(result["kda_result"].ranking_table, use_container_width=True)
+                st.dataframe(result["kda_result"].ranking_table, width="stretch")
             with st.expander("Method diagnostics"):
-                st.dataframe(result["kda_result"].diagnostics, use_container_width=True)
+                st.dataframe(result["kda_result"].diagnostics, width="stretch")
         elif result["mode"] == "subgroup":
             st.markdown(f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div><div class="gbk-note">Each section repeats the same selected Y and X variables within one <b>{_auto_label(result["sg_var"])}</b> group.</div></div>', unsafe_allow_html=True)
             display_methods = st.multiselect(
@@ -999,33 +1245,53 @@ def render_dashboard():
                 format_func=lambda method: METHOD_LABELS.get(method, method),
                 key="subgroup_chart_methods",
             )
+            active_methods = display_methods or result["methods"]
             for warning in result.get("warnings", []):
                 st.warning(warning)
+            summary = result.get("subgroup_summary")
+            if summary is not None and not summary.empty:
+                included_n = int((summary["status"] == "included").sum())
+                skipped_n = int((summary["status"] == "skipped").sum())
+                st.markdown(
+                    f'<div class="gbk-panel"><div class="gbk-panel-title">Subgroup run status</div>'
+                    f'<div class="gbk-note"><b>{included_n}</b> groups included · <b>{skipped_n}</b> groups skipped. '
+                    f'Skipped groups are excluded from charts and exports because they do not have enough complete rows for the selected Y/X setup.</div></div>',
+                    unsafe_allow_html=True,
+                )
+                with st.expander("Subgroup status table"):
+                    st.dataframe(summary, width="stretch")
+            chart_x_domain = chart_range_control(result["kda_result"], active_methods, "subgroup_chart")
             for item in result["results"]:
                 if item["skipped"]:
-                    st.markdown(f'<div class="gbk-note" style="margin:6px 0;color:rgba(255,255,255,0.3);">Skipping <b>{item["group"]}</b> — only {item["n"]} respondents.</div>', unsafe_allow_html=True)
+                    reason = item.get("reason") or "Not enough complete rows for the selected analysis."
+                    st.markdown(
+                        f'<div class="gbk-warning-card"><b>Skipped {item["group"]}</b><br>'
+                        f'n={int(item["n"]):,}. {reason}</div>',
+                        unsafe_allow_html=True,
+                    )
                 else:
                     st.markdown(f'<div style="font-size:13px;font-weight:700;color:#E8503A;margin:1rem 0 0.25rem;text-transform:uppercase;letter-spacing:1.5px;">{_auto_label(result["sg_var"])}: {item["group"]} · n={item["n"]:,}</div>', unsafe_allow_html=True)
                     render_interval_chart(
                         item["kda_result"],
-                        display_methods or result["methods"],
+                        active_methods,
                         title=f"All drivers — {item['group']}",
+                        chart_x_domain=chart_x_domain,
                     )
-                    st.dataframe(item["export_table"], use_container_width=True)
+                    st.dataframe(item["export_table"], width="stretch")
             with st.expander("Combined subgroup score export"):
-                st.dataframe(result["subgroup_export_table"], use_container_width=True)
+                st.dataframe(result["subgroup_export_table"], width="stretch")
                 st.download_button(
                     "Download subgroup actual scores CSV",
                     result["subgroup_export_table"].to_csv(index=False).encode("utf-8"),
                     file_name="subgroup_driver_actual_scores.csv",
                     mime="text/csv",
-                    use_container_width=True,
+                    width="stretch",
                 )
             with st.expander("Overall ranking summary"):
-                st.dataframe(result["kda_result"].ranking_table, use_container_width=True)
+                st.dataframe(result["kda_result"].ranking_table, width="stretch")
 
     with st.expander("Raw data preview"):
-        st.dataframe(df_raw.head(), use_container_width=True)
+        st.dataframe(df_raw.head(), width="stretch")
 
     with st.expander("Cleaning details"):
         st.markdown(f"""
