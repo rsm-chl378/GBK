@@ -379,6 +379,7 @@ DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
 DEFAULT_BOOTSTRAP_RESAMPLES = 40
+SHARE_SCALE_METHODS = {"shapley_lmg", "johnson", "random_forest", "xgboost", "shap"}
 METHOD_COLORS = {
     "correlation": "#F76362",
     "regression": "#C7D8E4",
@@ -525,6 +526,18 @@ def is_subgroup_candidate(df, col):
         return True
     return df[col].dtype == object and unique <= 12
 
+def is_control_candidate(df, col):
+    if is_excluded_column(col) or is_outcome_column(col):
+        return False
+    unique = df[col].nunique(dropna=True)
+    if unique < 2 or unique > 50:
+        return False
+    if str(col).lower() == "brand":
+        return True
+    if is_segment_column(col) or is_lookup_column(col):
+        return True
+    return df[col].dtype == object or unique <= 20
+
 def prepare_model_data(df):
     df = df.copy()
     df.columns = [str(c).strip() for c in df.columns]
@@ -534,6 +547,7 @@ def prepare_model_data(df):
     outcome_candidates = [c for c in df_num.columns if is_outcome_column(c)]
     driver_candidates = [c for c in df_num.columns if is_driver_column(c)]
     subgroup_candidates = [c for c in df_model.columns if is_subgroup_candidate(df_model, c)]
+    control_candidates = [c for c in df_model.columns if is_control_candidate(df_model, c)]
 
     missing_ratio = df_num.isna().mean()
     high_missing = missing_ratio[missing_ratio > 0.4].index.tolist()
@@ -552,10 +566,50 @@ def prepare_model_data(df):
         "excluded_cols": excluded_cols,
         "drop_missing_cols": drop_missing_cols,
         "subgroup_candidates": subgroup_candidates,
+        "control_candidates": control_candidates,
         "outcome_candidates": outcome_candidates,
         "driver_candidates": driver_candidates,
         "constant_cols": constant_cols,
     }
+
+def _uploaded_name(uploaded_file):
+    return str(getattr(uploaded_file, "name", "") or "")
+
+def get_uploaded_sheet_names(uploaded_file):
+    if uploaded_file is None or _uploaded_name(uploaded_file).lower().endswith(".csv"):
+        return []
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    excel = pd.ExcelFile(uploaded_file)
+    return excel.sheet_names
+
+def default_sheet_name(sheet_names, preferred=None):
+    for candidate in [preferred, "tool_ready", "consideration_long"]:
+        if candidate and candidate in sheet_names:
+            return candidate
+    return sheet_names[0] if sheet_names else None
+
+def read_uploaded_dataset(uploaded_file, sheet_name=None):
+    if hasattr(uploaded_file, "seek"):
+        uploaded_file.seek(0)
+    if _uploaded_name(uploaded_file).lower().endswith(".csv"):
+        return pd.read_csv(uploaded_file)
+    excel = pd.ExcelFile(uploaded_file)
+    selected_sheet = sheet_name or default_sheet_name(excel.sheet_names)
+    return pd.read_excel(excel, sheet_name=selected_sheet)
+
+def infer_y_type_override(df, target):
+    if target not in df.columns or not pd.api.types.is_numeric_dtype(df[target]):
+        return None
+    series = pd.to_numeric(df[target], errors="coerce").dropna()
+    if series.empty:
+        return None
+    unique_count = series.nunique()
+    values = series.to_numpy(dtype=float)
+    integer_like = np.all(np.isclose(values, np.round(values)))
+    if integer_like and 3 <= unique_count <= 7 and 1 <= series.min() and series.max() <= 7:
+        return "continuous"
+    return None
 
 def pill_tags(items):
     if not items:
@@ -919,10 +973,9 @@ def _importance_to_series(importance_table):
 
 def _importance_export_table(kda_result):
     table = kda_result.importance_table.copy()
-    if "mean_method_index" in table.columns:
-        table = table.sort_values(["mean_method_index", "driver"], ascending=[False, True], na_position="last")
-    else:
-        table = table.sort_values("driver")
+    for method in SHARE_SCALE_METHODS:
+        if method in table.columns and f"{method}_sum100" not in table.columns:
+            table[f"{method}_sum100"] = table[method] * 100.0
     return table.reset_index(drop=True)
 
 def _subgroup_summary_table(kda_result):
@@ -942,6 +995,35 @@ def _combined_subgroup_export_table(kda_result, subgroup_var):
         return pd.DataFrame(columns=["subgroup_variable", "subgroup_level", "driver"])
     return pd.concat(rows, ignore_index=True)
 
+def _client_style_shapley_table(subgroup_export_table):
+    required = {"subgroup_level", "driver", "shapley_lmg_sum100", "shapley_lmg_index"}
+    if subgroup_export_table is None or subgroup_export_table.empty:
+        return None
+    if not required.issubset(set(subgroup_export_table.columns)):
+        return None
+
+    levels = subgroup_export_table["subgroup_level"].drop_duplicates().tolist()
+    if not levels:
+        return None
+    first_level = levels[0]
+    drivers = subgroup_export_table.loc[
+        subgroup_export_table["subgroup_level"] == first_level,
+        "driver",
+    ].tolist()
+    out = pd.DataFrame(
+        {
+            "driver": drivers,
+            "perception": [display_name(driver) for driver in drivers],
+        }
+    )
+    for level in levels:
+        level_table = subgroup_export_table.loc[
+            subgroup_export_table["subgroup_level"] == level
+        ].set_index("driver")
+        out[f"{level}_sum100"] = level_table.reindex(drivers)["shapley_lmg_sum100"].round(1).to_numpy()
+        out[f"{level}_average100"] = level_table.reindex(drivers)["shapley_lmg_index"].round(1).to_numpy()
+    return out
+
 def run_analysis(
     df_num,
     df_raw,
@@ -951,6 +1033,7 @@ def run_analysis(
     methods,
     include_bootstrap=False,
     bootstrap_resamples=DEFAULT_BOOTSTRAP_RESAMPLES,
+    control_vars=None,
 ):
     predictors = [c for c in (x_vars if x_vars else df_num.columns) if c != target and c in df_num.columns]
     if not predictors:
@@ -958,7 +1041,14 @@ def run_analysis(
     if not methods:
         return {"error": "Select at least one method."}
 
+    controls = []
+    for control in control_vars or []:
+        if control in df_raw.columns and control not in predictors and control != target and control != sg_var:
+            controls.append(control)
+
     model_df = df_num[[target, *predictors]].copy()
+    for control in controls:
+        model_df[control] = df_raw[control]
     if sg_var:
         if sg_var not in df_raw.columns:
             return {"error": f"Subgroup variable '{sg_var}' not found."}
@@ -969,12 +1059,15 @@ def run_analysis(
         "xgboost": {"n_estimators": 150, "max_depth": 3},
         "shap": {"n_estimators": 150, "max_depth": 3},
     }
+    if controls:
+        method_params["shapley_lmg"] = {"always_controls": True}
     bootstrap_methods = [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS] if include_bootstrap else None
     bootstrap_params = {
         "n_resamples": int(bootstrap_resamples),
         "random_state": 454,
         "min_valid_resamples": 8,
     } if include_bootstrap else None
+    y_type_override = infer_y_type_override(model_df, target)
 
     try:
         kda_result = run_kda(
@@ -982,10 +1075,12 @@ def run_analysis(
             y_var=target,
             x_vars=predictors,
             methods=methods,
+            controls=controls,
             subgroup=sg_var,
             method_params=method_params,
             bootstrap_methods=bootstrap_methods,
             bootstrap_params=bootstrap_params,
+            y_type_override=y_type_override,
         )
     except Exception as exc:
         return {"error": str(exc)}
@@ -1003,13 +1098,15 @@ def run_analysis(
             "export_table": export_table,
             "kda_result": kda_result,
             "warnings": kda_result.warnings,
+            "controls": controls,
             "include_bootstrap": include_bootstrap,
             "bootstrap_methods": bootstrap_methods or [],
             "bootstrap_resamples": int(bootstrap_resamples) if include_bootstrap else 0,
+            "y_type_override": y_type_override,
         }
 
     subgroup_results = []
-    subgroup_summary = kda_result.subgroup_summary
+    subgroup_summary = getattr(kda_result, "subgroup_summary", None)
     for group, subgroup_result in (kda_result.subgroup_results or {}).items():
         subgroup_ranked = _importance_to_series(subgroup_result.importance_table)
         subgroup_export_table = _importance_export_table(subgroup_result)
@@ -1057,10 +1154,12 @@ def run_analysis(
         "subgroup_export_table": _combined_subgroup_export_table(kda_result, sg_var),
         "subgroup_summary": _subgroup_summary_table(kda_result),
         "warnings": kda_result.warnings,
+        "controls": controls,
         "kda_result": kda_result,
         "include_bootstrap": include_bootstrap,
         "bootstrap_methods": bootstrap_methods or [],
         "bootstrap_resamples": int(bootstrap_resamples) if include_bootstrap else 0,
+        "y_type_override": y_type_override,
     }
 
 def render_dashboard():
@@ -1088,8 +1187,7 @@ def render_dashboard():
             sheet_names = sheet_names or [st.session_state.uploaded_sheet_name]
         else:
             try:
-                uploaded_file.seek(0)
-                sheet_names = pd.ExcelFile(uploaded_file).sheet_names
+                sheet_names = get_uploaded_sheet_names(uploaded_file)
                 st.session_state.uploaded_sheet_names = sheet_names
             except Exception as e:
                 sheet_names = None
@@ -1101,7 +1199,7 @@ def render_dashboard():
                 selected_sheet = st.selectbox(
                     "Choose the worksheet to analyze",
                     sheet_names,
-                    index=0,
+                    index=sheet_names.index(default_sheet_name(sheet_names)),
                     key=f"sheet_select_{base_signature[0]}_{base_signature[1]}",
                 )
             else:
@@ -1120,8 +1218,8 @@ def render_dashboard():
             df_raw = df_num = meta = None
         try:
             if selected_sheet and (df_raw is None or df_num is None or meta is None):
-                uploaded_file.seek(0)
-                df_raw, df_num, meta = prepare_model_data(pd.read_excel(uploaded_file, sheet_name=selected_sheet))
+                source_df = read_uploaded_dataset(uploaded_file, selected_sheet)
+                df_raw, df_num, meta = prepare_model_data(source_df)
                 st.session_state.uploaded_df_raw = df_raw
                 st.session_state.uploaded_df_num = df_num
                 st.session_state.uploaded_meta = meta
@@ -1141,7 +1239,10 @@ def render_dashboard():
         return
 
     c1, c2, c3, c4 = st.columns(4)
-    c1.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">File</div><div class="gbk-card-text" style="font-size:13px;">{st.session_state.uploaded_filename}</div></div>', unsafe_allow_html=True)
+    file_label = st.session_state.uploaded_filename
+    if st.session_state.uploaded_sheet_name:
+        file_label = f"{file_label} · {st.session_state.uploaded_sheet_name}"
+    c1.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">File</div><div class="gbk-card-text" style="font-size:13px;">{file_label}</div></div>', unsafe_allow_html=True)
     c2.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Respondents</div><div class="gbk-stat">{df_raw.shape[0]:,}</div></div>', unsafe_allow_html=True)
     c3.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Total columns</div><div class="gbk-stat">{df_raw.shape[1]:,}</div></div>', unsafe_allow_html=True)
     c4.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Numeric inputs</div><div class="gbk-stat">{df_num.shape[1]:,}</div></div>', unsafe_allow_html=True)
@@ -1152,6 +1253,7 @@ def render_dashboard():
     y_options = auto_outcome_candidates + [c for c in df_num.columns.tolist() if c not in auto_outcome_candidates]
     driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in auto_outcome_candidates]
     compare_options = meta.get("subgroup_candidates") or []
+    control_candidates = meta.get("control_candidates") or []
 
     with st.container():
 
@@ -1243,6 +1345,28 @@ def render_dashboard():
                 st.markdown('<div class="gbk-note">No suitable group columns were detected.</div>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
+        st.markdown(
+            '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Control variables</div>'
+            '<div class="gbk-note">Add covariates that should stay in the model but should not be ranked as drivers. '
+            'Use this when the reference analysis adjusts for brand, market, segment, or another grouping variable.</div></div>',
+            unsafe_allow_html=True,
+        )
+        excluded_for_controls = {y_selected, sg_var, *x_vars}
+        control_options = [c for c in control_candidates if c not in excluded_for_controls]
+        control_vars = st.multiselect(
+            "Choose control variables",
+            control_options,
+            default=[],
+            format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} levels)",
+            label_visibility="collapsed",
+            key="dash_controls",
+            placeholder="Search control variables...",
+            help="Controls are included in the model but excluded from the driver ranking.",
+            filter_mode="fuzzy",
+        )
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
         # Step 4 — Method checkboxes with info boxes
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Choose methods</div>'
@@ -1315,6 +1439,7 @@ def render_dashboard():
         else:
             x_label = f"All detected predictors ({len(x_options)})"
         sg_label = f"Compare by {display_name(sg_var)}" if use_sg and sg_var else "Overall only"
+        controls_label = ", ".join(display_name(c) for c in control_vars) if control_vars else "None"
         y_label = display_name(y_selected) if y_selected else "Not selected"
         method_label = ", ".join(METHOD_LABELS.get(m, m) for m in selected_methods) if selected_methods else "None"
         ci_label = "On" if include_bootstrap else "Off"
@@ -1326,6 +1451,7 @@ def render_dashboard():
             <div><div class="gbk-summary-key">Outcome</div><div class="gbk-summary-val">{y_label}</div></div>
             <div><div class="gbk-summary-key">Predictors</div><div class="gbk-summary-val">{x_label}</div></div>
             <div><div class="gbk-summary-key">Group view</div><div class="gbk-summary-val">{sg_label}</div></div>
+            <div><div class="gbk-summary-key">Controls</div><div class="gbk-summary-val">{controls_label}</div></div>
             <div><div class="gbk-summary-key">Methods / uncertainty</div><div class="gbk-summary-val">{method_label}<br>Bands: {ci_label}</div></div>
           </div>
         </div>
@@ -1354,6 +1480,7 @@ def render_dashboard():
                     selected_methods,
                     include_bootstrap=include_bootstrap,
                     bootstrap_resamples=bootstrap_resamples,
+                    control_vars=control_vars,
                 )
             st.session_state.analysis_result = result
 
@@ -1404,12 +1531,21 @@ def render_dashboard():
                 )
                 st.dataframe(result["kda_result"].diagnostics, width="stretch")
         elif result["mode"] == "subgroup":
+            controls_note = ", ".join(display_name(c) for c in result.get("controls", [])) or "None"
             st.markdown(
                 f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div>'
                 f'<div class="gbk-note">Each section repeats the same outcome and predictor setup within one <b>{_auto_label(result["sg_var"])}</b> group. '
-                f'Use this view to see where recommendations should change by audience, brand, or segment.</div></div>',
+                f'Use this view to see where recommendations should change by audience, brand, or segment. <b>Controls:</b> {controls_note}.</div></div>',
                 unsafe_allow_html=True,
             )
+            client_style_table = _client_style_shapley_table(result["subgroup_export_table"])
+            if client_style_table is not None:
+                with st.expander("Client-style Shapley / LMG table", expanded=True):
+                    st.markdown(
+                        '<div class="gbk-mini-note">Use *_sum100 to compare with the client Excel left block, and *_average100 to compare with the right block.</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.dataframe(client_style_table, width="stretch")
             display_methods = st.multiselect(
                 "Methods to show in subgroup charts",
                 result["methods"],
@@ -1494,6 +1630,7 @@ def render_dashboard():
           <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta['excluded_cols'])}<br><br>
           <b>Dropped because of high missing data:</b><br>{pill_tags(meta['drop_missing_cols'])}<br><br>
           <b>Suggested subgroup columns:</b><br>{pill_tags(meta['subgroup_candidates'])}<br><br>
+          <b>Suggested control columns:</b><br>{pill_tags(meta.get('control_candidates', []))}<br><br>
           <b>Dropped because all values were the same:</b><br>{pill_tags(meta['constant_cols'])}
         </div>
         """, unsafe_allow_html=True)

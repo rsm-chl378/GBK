@@ -13,6 +13,7 @@ from .schemas import KDAResult, MethodResult
 
 
 MIN_ROWS = 10
+VALID_Y_TYPES = {"continuous", "binary", "ordered", "nominal", "unknown"}
 
 
 def _minimum_required_rows(x_vars: list[str], controls: list[str]) -> int:
@@ -26,6 +27,7 @@ def _validate_inputs(
     methods: list[str],
     controls: list[str] | None,
     subgroup: str | None,
+    y_type_override: str | None = None,
 ) -> None:
     controls = controls or []
     needed = [y_var, *x_vars, *controls]
@@ -44,6 +46,9 @@ def _validate_inputs(
     overlap = sorted(set(x_vars).intersection(controls))
     if overlap:
         raise ValueError(f"Variables cannot be both drivers and controls: {', '.join(overlap)}")
+    if y_type_override is not None and y_type_override not in VALID_Y_TYPES:
+        valid = ", ".join(sorted(VALID_Y_TYPES))
+        raise ValueError(f"Invalid y_type_override '{y_type_override}'. Expected one of: {valid}.")
 
 
 def _nan_method(method: str, x_vars: list[str], warning: str) -> MethodResult:
@@ -234,11 +239,12 @@ def run_kda(
     method_params: dict | None = None,
     bootstrap_methods: list[str] | None = None,
     bootstrap_params: dict | None = None,
+    y_type_override: str | None = None,
     _run_subgroups: bool = True,
 ) -> KDAResult:
     controls = controls or []
     method_params = method_params or {}
-    _validate_inputs(data, y_var, x_vars, methods, controls, subgroup)
+    _validate_inputs(data, y_var, x_vars, methods, controls, subgroup, y_type_override)
 
     subgroup_results: dict[str, KDAResult] | None = None
     subgroup_summary: pd.DataFrame | None = None
@@ -273,6 +279,7 @@ def run_kda(
                     method_params=method_params,
                     bootstrap_methods=bootstrap_methods,
                     bootstrap_params=bootstrap_params,
+                    y_type_override=y_type_override,
                     _run_subgroups=False,
                 )
             except Exception as exc:
@@ -310,7 +317,7 @@ def run_kda(
             f"{len(model_data)} rows after dropping missing values; at least {min_required_rows} are required."
         )
 
-    y_type = detect_var_type(model_data[y_var], role="y")
+    y_type = y_type_override or detect_var_type(model_data[y_var], role="y")
     method_scores: dict[str, pd.Series] = {}
     method_metadata: dict[str, dict] = {}
     method_warnings: dict[str, list[str]] = {}
