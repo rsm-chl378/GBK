@@ -88,16 +88,26 @@ def _ordered_pseudo_r2(y: np.ndarray, x: pd.DataFrame) -> float:
         return float("nan")
 
 
-def compute_lmg(x_df: pd.DataFrame, y: np.ndarray) -> pd.Series:
+def compute_lmg(
+    x_df: pd.DataFrame,
+    y: np.ndarray,
+    always_df: pd.DataFrame | None = None,
+) -> pd.Series:
     predictors = list(x_df.columns)
     p = len(predictors)
+    always_df = always_df if always_df is not None else pd.DataFrame(index=x_df.index)
 
     @lru_cache(maxsize=None)
     def subset_r2(subset: tuple[int, ...]) -> float:
-        if len(subset) == 0:
+        frames: list[pd.DataFrame] = []
+        if always_df.shape[1] > 0:
+            frames.append(always_df)
+        if len(subset) > 0:
+            cols = [predictors[i] for i in subset]
+            frames.append(x_df[cols])
+        if not frames:
             return 0.0
-        cols = [predictors[i] for i in subset]
-        return _ols_r2(y, x_df[cols].to_numpy(dtype=float))
+        return _ols_r2(y, pd.concat(frames, axis=1).to_numpy(dtype=float))
 
     lmg = {name: 0.0 for name in predictors}
     factorial_p = math.factorial(p)
@@ -204,13 +214,28 @@ def drop_one(
     return MethodResult(pd.Series(scores, dtype=float), {"full_score": full_score}, warnings)
 
 
-def shapley_lmg(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: list[str], **_) -> MethodResult:
-    all_predictors = [*x_vars, *controls]
-    x_encoded, mapping = encode_predictors(data, all_predictors)
+def shapley_lmg(
+    data: pd.DataFrame,
+    y_var: str,
+    x_vars: list[str],
+    controls: list[str],
+    params: dict | None = None,
+    **_,
+) -> MethodResult:
+    params = params or {}
     y, _ = encode_outcome(data[y_var], "continuous")
-    encoded_scores = compute_lmg(x_encoded, y)
+    if params.get("always_controls") and controls:
+        x_encoded, mapping = encode_predictors(data, x_vars)
+        controls_encoded, _ = encode_predictors(data, controls)
+        encoded_scores = compute_lmg(x_encoded, y, always_df=controls_encoded)
+        metadata = {"model_type": "LMG", "control_mode": "always"}
+    else:
+        all_predictors = [*x_vars, *controls]
+        x_encoded, mapping = encode_predictors(data, all_predictors)
+        encoded_scores = compute_lmg(x_encoded, y)
+        metadata = {"model_type": "LMG", "control_mode": "pooled"}
     scores = share_scale(aggregate_encoded_scores(encoded_scores, x_vars, mapping))
-    return MethodResult(scores, {"model_type": "LMG"})
+    return MethodResult(scores, metadata)
 
 
 def johnson(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: list[str], **_) -> MethodResult:

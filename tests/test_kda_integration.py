@@ -1,4 +1,6 @@
 import unittest
+from io import BytesIO
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,7 +15,9 @@ from GBK_app import (
     _driver_axis_sort,
     build_driver_interval_chart,
     build_interactive_chart_data,
+    _client_style_shapley_table,
     prepare_model_data,
+    read_uploaded_dataset,
     run_analysis,
 )
 
@@ -219,11 +223,52 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         self.assertIn("Age Range", meta["subgroup_candidates"])
         self.assertNotIn("top_brand_name", meta["subgroup_candidates"])
         self.assertNotIn("ownership_brand_name", meta["subgroup_candidates"])
+        self.assertIn("brand", meta["control_candidates"])
+        self.assertIn("Gender", meta["control_candidates"])
+        self.assertIn("Age Range", meta["control_candidates"])
+        self.assertIn("top_brand_name", meta["control_candidates"])
+        self.assertIn("ownership_brand_name", meta["control_candidates"])
         self.assertEqual(meta["outcome_candidates"], ["n2_consideration"])
         self.assertEqual(
             set(meta["driver_candidates"]),
             {"Has the best designs in the category", "Is a brand I trust"},
         )
+
+    def test_upload_reader_prefers_consideration_long_sheet(self):
+        workbook = BytesIO()
+        summary = pd.DataFrame({"summary_value": [1, 2]})
+        consideration_long = pd.DataFrame(
+            {
+                "record": [1, 1],
+                "model": ["brands", "brands"],
+                "brand_code": [1, 2],
+                "consideration": [5, 4],
+                "statement_1": [4, 3],
+            }
+        )
+        with pd.ExcelWriter(workbook, engine="openpyxl") as writer:
+            summary.to_excel(writer, sheet_name="client_key_drivers", index=False)
+            consideration_long.to_excel(writer, sheet_name="consideration_long", index=False)
+        workbook.seek(0)
+
+        loaded = read_uploaded_dataset(workbook)
+
+        self.assertEqual(list(loaded.columns), list(consideration_long.columns))
+        self.assertEqual(len(loaded), 2)
+
+    def test_upload_reader_respects_explicit_sheet_selection(self):
+        workbook = BytesIO()
+        first = pd.DataFrame({"wrong": [1]})
+        second = pd.DataFrame({"right": [2, 3]})
+        with pd.ExcelWriter(workbook, engine="openpyxl") as writer:
+            first.to_excel(writer, sheet_name="first", index=False)
+            second.to_excel(writer, sheet_name="source", index=False)
+        workbook.seek(0)
+
+        loaded = read_uploaded_dataset(workbook, sheet_name="source")
+
+        self.assertEqual(list(loaded.columns), ["right"])
+        self.assertEqual(len(loaded), 2)
 
     def test_generic_dataset_without_zagg_names_can_run(self):
         rng = np.random.default_rng(467)
@@ -532,6 +577,136 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
         self.assertAlmostEqual(result.importance_table["shapley_lmg"].sum(), 1.0, places=10)
         self.assertAlmostEqual(result.importance_table["johnson"].sum(), 1.0, places=10)
+
+    def test_run_kda_can_force_likert_outcome_to_continuous(self):
+        rng = np.random.default_rng(470)
+        n = 80
+        x1 = rng.normal(size=n)
+        x2 = rng.normal(size=n)
+        y = pd.cut(1.5 * x1 + 0.3 * x2, bins=5, labels=[1, 2, 3, 4, 5]).astype(int)
+        df = pd.DataFrame({"consideration": y, "statement_1": x1, "statement_2": x2})
+
+        result = run_kda(
+            df,
+            "consideration",
+            ["statement_1", "statement_2"],
+            ["shapley_lmg"],
+            y_type_override="continuous",
+        )
+
+        self.assertEqual(
+            result.diagnostics.loc[result.diagnostics["metric"] == "y_type", "value"].iloc[0],
+            "continuous",
+        )
+        self.assertFalse(result.importance_table["shapley_lmg"].isna().all())
+
+    def test_shapley_lmg_can_hold_controls_always_in_model(self):
+        rng = np.random.default_rng(471)
+        n = 80
+        x1 = rng.normal(size=n)
+        x2 = rng.normal(size=n)
+        brand_b = np.array([0, 1] * (n // 2))
+        y = 1.5 * x1 + 0.4 * x2 + 2.0 * brand_b + rng.normal(scale=0.2, size=n)
+        df = pd.DataFrame({"y": y, "x1": x1, "x2": x2, "brand_b": brand_b})
+
+        plain = run_kda(df, "y", ["x1", "x2"], ["shapley_lmg"])
+        controlled = run_kda(
+            df,
+            "y",
+            ["x1", "x2"],
+            ["shapley_lmg"],
+            controls=["brand_b"],
+            method_params={"shapley_lmg": {"always_controls": True}},
+        )
+
+        self.assertAlmostEqual(controlled.importance_table["shapley_lmg"].sum(), 1.0, places=10)
+        self.assertNotEqual(
+            plain.importance_table["shapley_lmg"].round(8).tolist(),
+            controlled.importance_table["shapley_lmg"].round(8).tolist(),
+        )
+
+    def test_run_analysis_passes_generic_control_variables_to_backend(self):
+        rng = np.random.default_rng(472)
+        n = 80
+        segment = np.array(["A", "B"] * (n // 2))
+        x1 = rng.normal(size=n)
+        x2 = rng.normal(size=n)
+        y = 1.3 * x1 + 0.2 * x2 + np.where(segment == "B", 2.0, 0.0) + rng.normal(scale=0.2, size=n)
+        df_raw = pd.DataFrame({"y": y, "x1": x1, "x2": x2, "segment": segment})
+        df_num = df_raw[["y", "x1", "x2"]].copy()
+
+        result = run_analysis(
+            df_num,
+            df_raw,
+            target="y",
+            x_vars=["x1", "x2"],
+            sg_var=None,
+            methods=["shapley_lmg"],
+            control_vars=["segment"],
+        )
+
+        self.assertEqual(result["controls"], ["segment"])
+        self.assertEqual(
+            result["kda_result"].method_metadata["shapley_lmg"]["control_mode"],
+            "always",
+        )
+        self.assertIn("segment", result["kda_result"].diagnostics["value"].tolist())
+
+    def test_amazon_autos_tool_output_matches_client_average_100_when_using_lmg(self):
+        project_dir = Path(__file__).resolve().parents[2]
+        data_path = project_dir / "Amazon_autos_dataset" / "amazon_autos_outputs" / "consideration_long.csv"
+        if not data_path.exists():
+            self.skipTest("Amazon Autos prepared data is not available in this checkout.")
+        df = pd.read_csv(data_path)
+        df_raw, df_num, _ = prepare_model_data(df)
+        x_vars = [f"statement_{i}" for i in range(1, 8)]
+
+        result = run_analysis(
+            df_num,
+            df_raw,
+            target="consideration",
+            x_vars=x_vars,
+            sg_var="model",
+            methods=["shapley_lmg"],
+            control_vars=["brand"],
+        )
+
+        self.assertEqual(result["mode"], "subgroup")
+        self.assertEqual(result["controls"], ["brand"])
+        sum100_by_group = {}
+        index_by_group = {}
+        for item in result["results"]:
+            if item["skipped"]:
+                continue
+            self.assertEqual(item["export_table"]["driver"].tolist(), x_vars)
+            table = item["export_table"].set_index("driver").loc[x_vars]
+            sum100_by_group[item["group"]] = table["shapley_lmg_sum100"].round(1).tolist()
+            index_by_group[item["group"]] = table["shapley_lmg_index"].round(1).tolist()
+
+        self.assertEqual(
+            sum100_by_group["brands"],
+            [16.8, 16.1, 12.7, 16.7, 12.4, 11.7, 13.6],
+        )
+        self.assertEqual(
+            sum100_by_group["dealerships"],
+            [20.5, 13.5, 19.9, 11.8, 13.5, 12.2, 8.6],
+        )
+        self.assertEqual(
+            index_by_group["brands"],
+            [117.5, 113.0, 88.6, 117.0, 87.1, 81.7, 95.0],
+        )
+        self.assertEqual(
+            index_by_group["dealerships"],
+            [143.7, 94.3, 139.2, 82.8, 94.6, 85.4, 60.0],
+        )
+
+        client_style = _client_style_shapley_table(result["subgroup_export_table"])
+        self.assertIsNotNone(client_style)
+        self.assertEqual(client_style["driver"].tolist(), x_vars)
+        self.assertEqual(client_style["brands_sum100"].round(1).tolist(), [16.8, 16.1, 12.7, 16.7, 12.4, 11.7, 13.6])
+        self.assertEqual(client_style["dealerships_sum100"].round(1).tolist(), [20.5, 13.5, 19.9, 11.8, 13.5, 12.2, 8.6])
+        self.assertEqual(client_style["brands_average100"].round(1).tolist(), [117.5, 113.0, 88.6, 117.0, 87.1, 81.7, 95.0])
+        self.assertEqual(client_style["dealerships_average100"].round(1).tolist(), [143.7, 94.3, 139.2, 82.8, 94.6, 85.4, 60.0])
 
 
 if __name__ == "__main__":
