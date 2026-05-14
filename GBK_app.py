@@ -35,6 +35,7 @@ White      #FFFFFF
 .gbk-panel { background: #334651; border-radius: 10px; border: 1px solid rgba(199,216,228,0.18); padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
 .gbk-panel-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.62); margin-bottom: 0.75rem; }
 .gbk-note { font-size: 13px; color: rgba(255,255,255,0.84); line-height: 1.7; }
+.gbk-mini-note { font-size: 12px; color: rgba(255,255,255,0.68); line-height: 1.6; margin-top: 0.45rem; }
 .gbk-stat { font-size: 30px; font-weight: 800; color: #FFFFFF; line-height: 1; }
 .gbk-card { background: #334651; border-radius: 10px; border: 1px solid rgba(199,216,228,0.18); padding: 1.25rem 1.5rem; }
 .gbk-card-kicker { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.58); margin-bottom: 0.6rem; }
@@ -85,10 +86,64 @@ div[data-testid="stMarkdownContainer"] li {
 div[data-testid="stWidgetLabel"] {
   margin-bottom: 0.35rem !important;
 }
-div[data-testid="InputInstructions"],
-div[data-testid="stTooltipHoverTarget"],
-div[data-testid="stHelp"] {
+div[data-testid="InputInstructions"] {
   color: rgba(199,216,228,0.78) !important;
+}
+[data-testid="stTooltipHoverTarget"],
+[data-testid="stTooltipHoverTarget"] *,
+[data-testid="stHelp"],
+[data-testid="stHelp"] * {
+  color: #C7D8E4 !important;
+  -webkit-text-fill-color: #C7D8E4 !important;
+}
+[data-testid="stTooltipHoverTarget"] svg,
+[data-testid="stTooltipHoverTarget"] svg.icon,
+[data-testid="stHelp"] svg {
+  color: #789FC0 !important;
+  fill: none !important;
+  stroke: #789FC0 !important;
+  opacity: 1 !important;
+  stroke-width: 2.2px !important;
+}
+[data-testid="stTooltipHoverTarget"]:hover,
+[data-testid="stTooltipHoverTarget"]:hover *,
+[data-testid="stHelp"]:hover,
+[data-testid="stHelp"]:hover * {
+  color: #789FC0 !important;
+  -webkit-text-fill-color: #789FC0 !important;
+}
+[data-testid="stTooltipHoverTarget"]:hover svg,
+[data-testid="stHelp"]:hover svg {
+  color: #789FC0 !important;
+  fill: none !important;
+  stroke: #789FC0 !important;
+}
+[data-testid="stTooltipIcon"] button {
+  position: relative !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  border: 1.5px solid #789FC0 !important;
+  border-radius: 50% !important;
+  background: rgba(120,159,192,0.18) !important;
+  color: #789FC0 !important;
+  -webkit-text-fill-color: #789FC0 !important;
+}
+[data-testid="stTooltipIcon"] button svg {
+  display: none !important;
+}
+[data-testid="stTooltipIcon"] button::after {
+  content: "?" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #789FC0 !important;
+  -webkit-text-fill-color: #789FC0 !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
 }
 
 div[data-testid="stButton"] > button,
@@ -117,18 +172,38 @@ div[data-testid="stSelectbox"] > div > div {
 }
 div[data-baseweb="select"] span,
 div[data-baseweb="select"] input,
+div[data-baseweb="select"] > div > div,
+div[data-baseweb="select"] > div > div *,
 div[data-testid="stSelectbox"] span,
 div[data-testid="stSelectbox"] input,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] div,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] div *,
 div[data-testid="stMultiSelect"] span,
 div[data-testid="stMultiSelect"] input {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
 }
 div[data-baseweb="select"] input::placeholder,
+div[data-baseweb="popover"] input::placeholder,
 div[data-testid="stSelectbox"] input::placeholder,
 div[data-testid="stMultiSelect"] input::placeholder {
-  color: rgba(255,255,255,0.64) !important;
-  -webkit-text-fill-color: rgba(255,255,255,0.64) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+div[data-baseweb="select"] [aria-disabled="true"],
+div[data-baseweb="select"] [aria-disabled="true"] *,
+div[data-baseweb="select"] [aria-placeholder],
+div[data-baseweb="select"] [aria-placeholder] *,
+div[data-testid="stSelectbox"] [aria-disabled="true"],
+div[data-testid="stSelectbox"] [aria-disabled="true"] *,
+div[data-testid="stSelectbox"] [aria-placeholder],
+div[data-testid="stSelectbox"] [aria-placeholder] *,
+div[data-testid="stMultiSelect"] [aria-disabled="true"],
+div[data-testid="stMultiSelect"] [aria-disabled="true"] * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
   opacity: 1 !important;
 }
 div[data-baseweb="popover"],
@@ -152,6 +227,34 @@ div[role="listbox"] div[aria-selected="true"] * {
   color: #1F2D36 !important;
   -webkit-text-fill-color: #1F2D36 !important;
 }
+div[data-baseweb="popover"]:has(div[data-baseweb="tooltip"]),
+div[data-baseweb="popover"]:has(div[role="tooltip"]),
+div[data-baseweb="popover"]:has([data-testid="stTooltipContent"]) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+div[data-baseweb="tooltip"],
+div[role="tooltip"],
+div[data-testid="stTooltipContent"] {
+  background: #334651 !important;
+  border: 1px solid rgba(199,216,228,0.32) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.32) !important;
+}
+div[data-baseweb="tooltip"] *,
+div[role="tooltip"] *,
+div[data-testid="stTooltipContent"] * {
+  background: transparent !important;
+  color: rgba(255,255,255,0.92) !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.92) !important;
+}
+div[data-baseweb="tooltip"] svg,
+div[role="tooltip"] svg,
+div[data-testid="stTooltipContent"] svg {
+  color: #334651 !important;
+  fill: #334651 !important;
+  stroke: #334651 !important;
+}
 div[data-testid="stMultiSelect"] > div {
   background: #334651 !important;
   border: 1px solid rgba(199,216,228,0.24) !important;
@@ -167,8 +270,8 @@ div[data-testid="stMultiSelect"] div[data-baseweb="select"] input {
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] input::placeholder,
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true"],
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true"] * {
-  color: rgba(255,255,255,0.74) !important;
-  -webkit-text-fill-color: rgba(255,255,255,0.74) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
   opacity: 1 !important;
 }
 
@@ -246,7 +349,7 @@ div[data-testid="stCheckbox"] input:checked {
 
 
 def configure_page():
-    st.set_page_config(page_title="GBK Marketing Insights Suite", layout="wide")
+    st.set_page_config(page_title="GBK Driver Insights Suite", layout="wide")
     for k, v in {
         "uploaded_df_raw": None,
         "uploaded_df_num": None,
@@ -300,21 +403,20 @@ METHOD_LABELS = {
 
 METHOD_INFO = {
     "shap": {
-        "title": "SHAP — Shapley Values",
+        "title": "SHAP — Advanced Importance Check",
         "recommended": True,
         "desc": (
-            "Ranks drivers by average absolute feature contribution after fitting an XGBoost model. "
-            "Useful for non-linear patterns and client-friendly variable importance summaries."
+            "Use when you want a strong client-friendly read that can pick up curved relationships and "
+            "interactions. It ranks predictors by how much they change the model's prediction on average."
         ),
-        "note": "Mean |SHAP value| — average absolute impact on outcome.",
+        "note": "Mean |SHAP value| — average absolute impact on the outcome.",
     },
     "random_forest": {
         "title": "Random Forest Importance",
         "recommended": False,
         "desc": (
-            "Good for non-linear patterns. Trains an ensemble of decision trees and ranks variables by how "
-            "much they reduce prediction error. Reliable and fast, but scores can be biased toward "
-            "high-cardinality variables. Good as a comparison check against SHAP."
+            "Use as a practical comparison check when relationships may not be straight lines. It ranks "
+            "predictors by how much they help a group of decision trees predict the outcome."
         ),
         "note": "Permutation importance from Random Forest.",
     },
@@ -322,44 +424,42 @@ METHOD_INFO = {
         "title": "Correlation (Pearson |r|)",
         "recommended": False,
         "desc": (
-            "Simple and transparent. Ranks variables by absolute linear correlation with the outcome. "
-            "Easy to explain to non-technical clients, but misses non-linear effects and ignores "
-            "interactions between variables."
+            "Best first read. It looks at each predictor one at a time and asks how closely it moves with "
+            "the outcome. Easy to explain, but it does not control for the other predictors."
         ),
-        "note": "Pearson |r| — absolute linear correlation with outcome.",
+        "note": "Pearson |r| — absolute linear relationship with the outcome.",
     },
     "regression": {
         "title": "Standardized Regression Coefficients",
         "recommended": False,
         "desc": (
-            "Good for linear relationships. Matches the GBK/R style standardized OLS beta calculation "
-            "on numeric outcome coding, so binary consideration outcomes remain comparable with the "
-            "client reference workbook. Interpretable, but unstable when predictors are highly correlated."
+            "Good default when you want to compare predictors while keeping the others in the model. "
+            "Useful for a clear driver story; review with care when survey questions are very similar."
         ),
         "note": "Standardized coefficient β — signed linear importance.",
     },
     "drop_one": {
         "title": "Drop-one Usefulness",
         "recommended": False,
-        "desc": "Compares the full model against reduced models that remove one driver at a time.",
+        "desc": "Checks how much the model weakens when one predictor is removed. Helpful for spotting variables that add unique value.",
         "note": "Full model score minus reduced model score.",
     },
     "shapley_lmg": {
         "title": "Shapley / LMG",
         "recommended": False,
-        "desc": "Allocates linear model explained variance across drivers using numeric outcome coding.",
+        "desc": "Useful when predictors overlap. It shares the model's explained variance across predictors so credit is spread more fairly.",
         "note": "LMG share of model R-squared.",
     },
     "johnson": {
         "title": "Johnson Relative Weights",
         "recommended": False,
-        "desc": "Decomposes linear model explanatory power under correlated predictors using numeric outcome coding.",
+        "desc": "Another good option when predictors are correlated. It estimates each predictor's relative share of the model's explanatory power.",
         "note": "Johnson relative weight.",
     },
     "xgboost": {
         "title": "XGBoost Importance",
         "recommended": False,
-        "desc": "Fits a gradient boosted tree model and ranks drivers by gain-based feature importance.",
+        "desc": "Use as an advanced comparison check when patterns may not be straight lines. It ranks predictors by how much they improve a boosted tree model.",
         "note": "XGBoost gain importance.",
     },
 }
@@ -639,8 +739,8 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             alt.Tooltip("method:N", title="Method"),
             alt.Tooltip("score:Q", title="Index score", format=".1f"),
             alt.Tooltip("raw_score:Q", title="Raw score", format=".4f"),
-            alt.Tooltip("ci_lower:Q", title="CI lower index", format=".1f"),
-            alt.Tooltip("ci_upper:Q", title="CI upper index", format=".1f"),
+            alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
+            alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
         ],
     )
     ci_df = chart_df.dropna(subset=["ci_lower", "ci_upper"])
@@ -653,8 +753,8 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         tooltip=[
             alt.Tooltip("driver_label:N", title="Driver"),
             alt.Tooltip("method:N", title="Method"),
-            alt.Tooltip("ci_lower:Q", title="CI lower index", format=".1f"),
-            alt.Tooltip("ci_upper:Q", title="CI upper index", format=".1f"),
+            alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
+            alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
         ],
     )
     points = base.mark_circle(size=90).encode(
@@ -676,12 +776,12 @@ def render_interval_chart(kda_result, methods, title="Driver importance", chart_
     if ci_methods:
         labels = ", ".join(METHOD_LABELS.get(method, method) for method in ci_methods)
         st.markdown(
-            f'<div class="gbk-disclaimer">Dots are indexed method scores. Horizontal lines are bootstrap confidence intervals for {labels}. The raw scores remain in the export table.</div>',
+            f'<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Horizontal lines are bootstrap confidence intervals for {labels}. Raw scores remain in the export table.</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            '<div class="gbk-disclaimer">Dots are indexed method scores. Enable bootstrap before running analysis to add confidence intervals.</div>',
+            '<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Enable bootstrap before running analysis to add confidence intervals.</div>',
             unsafe_allow_html=True,
         )
 
@@ -699,18 +799,38 @@ def chart_range_control(kda_result, methods, key_prefix):
     max_x = max(100.0, float(finite_values.max()))
     pad = max((max_x - min_x) * 0.12, 10.0)
     full_domain = (float(np.floor(min_x - pad)), float(np.ceil(max_x + pad)))
-    with st.expander("Chart controls"):
-        auto_range = st.checkbox("Auto x-axis range", value=True, key=f"{key_prefix}_auto_range")
+    with st.expander("Chart display controls"):
+        auto_range = st.checkbox("Keep automatic chart scale", value=True, key=f"{key_prefix}_auto_range")
         if auto_range:
             return None
         return st.slider(
-            "Visible index range",
+            "Visible score range",
             min_value=full_domain[0],
             max_value=full_domain[1],
             value=full_domain,
             step=1.0,
             key=f"{key_prefix}_x_range",
         )
+
+def render_results_guide(target, methods, subgroup_label=None):
+    t = display_name(target)
+    method_text = ", ".join(METHOD_LABELS.get(method, method) for method in methods)
+    subgroup_note = ""
+    if subgroup_label:
+        subgroup_note = (
+            f'<div class="gbk-mini-note"><b>Subgroup view:</b> Read each '
+            f'{display_name(subgroup_label)} group separately. A driver can be important for one group and less important for another.</div>'
+        )
+    st.markdown(
+        f'<div class="gbk-panel"><div class="gbk-panel-title">How to read the results</div>'
+        f'<div class="gbk-note"><b>Top drivers</b> are the predictors most strongly linked with <b>{t}</b> in this run. '
+        f'Read the ranking from top to bottom. Scores above 100 are stronger than the average driver; scores below 100 are weaker. '
+        f'When several methods point to the same top drivers, the story is usually more dependable. '
+        f'These results are directional, not proof of cause and effect.</div>'
+        f'<div class="gbk-mini-note"><b>Methods used:</b> {method_text}</div>'
+        f'{subgroup_note}</div>',
+        unsafe_allow_html=True,
+    )
 
 def render_insights(target, driver_scores):
     names = [display_name(x) for x in driver_scores.index]
@@ -721,13 +841,13 @@ def render_insights(target, driver_scores):
     n3 = names[2] if len(names) > 2 else n2
     n4 = names[3] if len(names) > 3 else n3
     st.markdown(
-        f'<div class="gbk-panel"><div class="gbk-panel-title">What the data suggests</div>'
-        f'<div class="gbk-insight gbk-insight-red"><b>Primary signal</b><br>'
-        f'<b>{names[0]}</b> appears to be the strongest variable associated with <b>{t}</b>.</div>'
-        f'<div class="gbk-insight gbk-insight-blue"><b>Secondary signal</b><br>'
-        f'<b>{n2}</b> also shows a meaningful association with this outcome.</div>'
-        f'<div class="gbk-insight"><b>Broader context</b><br>'
-        f'<b>{n3}</b> and <b>{n4}</b> are also worth reviewing alongside business context and prior knowledge.</div>'
+        f'<div class="gbk-panel"><div class="gbk-panel-title">Plain-language readout</div>'
+        f'<div class="gbk-insight gbk-insight-red"><b>Lead driver</b><br>'
+        f'<b>{names[0]}</b> is the strongest predictor linked with <b>{t}</b>.</div>'
+        f'<div class="gbk-insight gbk-insight-blue"><b>Next driver to review</b><br>'
+        f'<b>{n2}</b> is also meaningfully connected to this outcome.</div>'
+        f'<div class="gbk-insight"><b>Supporting context</b><br>'
+        f'<b>{n3}</b> and <b>{n4}</b> may help round out the client discussion, especially if they fit the business context.</div>'
         f'</div>',
         unsafe_allow_html=True
     )
@@ -741,17 +861,17 @@ def render_next_steps(target, driver_scores):
     n3 = names[2] if len(names) > 2 else n2
     n4 = names[3] if len(names) > 3 else n3
     steps = [
-        f"<b>Start with {names[0]}.</b> It shows the strongest association with {t}.",
-        f"<b>Review {n2} next.</b> It appears to be another meaningful driver candidate.",
-        f"<b>Keep {n3} and {n4} in the discussion.</b> They may matter depending on audience and context.",
-        "<b>Validate with business judgment.</b> Use these results as decision support, not a standalone answer.",
+        f"<b>Lead with {names[0]}.</b> It has the strongest link with {t}.",
+        f"<b>Pressure-test {n2}.</b> Check whether it fits the client story and existing research.",
+        f"<b>Use {n3} and {n4} as supporting points.</b> They may matter for messaging, targeting, or product priorities.",
+        "<b>Add business judgment.</b> Treat the ranking as decision support, not a standalone recommendation.",
     ]
     items = "".join(
         f'<div class="gbk-step-item"><div class="gbk-step-num">{i+1}</div><div>{s}</div></div>'
         for i, s in enumerate(steps)
     )
     st.markdown(
-        f'<div class="gbk-panel"><div class="gbk-panel-title">Suggested next steps</div>{items}</div>',
+        f'<div class="gbk-panel"><div class="gbk-panel-title">Suggested consultant next steps</div>{items}</div>',
         unsafe_allow_html=True
     )
 
@@ -765,7 +885,8 @@ def render_detail_table(ranked):
         for i, (col, val) in enumerate(ranked.items())
     )
     st.markdown(
-        f'<div class="gbk-panel"><div class="gbk-panel-title">Full Driver Ranking</div>'
+        f'<div class="gbk-panel"><div class="gbk-panel-title">Full driver ranking</div>'
+        f'<div class="gbk-mini-note" style="margin-bottom:0.75rem;">Read from top to bottom. Higher scores mean a stronger relative driver in this run. When scores are very close, treat the order as a tie and use business context.</div>'
         f'<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr>'
         f'<th style="text-align:left;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid rgba(255,255,255,0.08);">#</th>'
         f'<th style="text-align:left;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid rgba(255,255,255,0.08);">Driver</th>'
@@ -947,14 +1068,18 @@ def render_dashboard():
     st.markdown("""
     <div class="gbk-hero">
       <div class="gbk-eyebrow">GBK Toolbox</div>
-      <h1>Marketing<br>Insights Suite</h1>
-      <p>Upload a clean dataset, select your variables, choose a method, and run.<br>
-      Pre-filter to relevant variables before uploading (1 Y &nbsp;·&nbsp; ~12 X &nbsp;·&nbsp; a few subgroup columns).</p>
+      <h1>Driver<br>Insights Suite</h1>
+      <p>Use survey data to see which questions are most closely linked to the outcome you care about.<br>
+      Work left to right: upload, choose the outcome, choose possible drivers, optionally compare groups, then run.</p>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="gbk-label">Upload dataset</div>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload .xlsx", type=["xlsx"], key="dashboard_upload", label_visibility="collapsed")
+    st.markdown('<div class="gbk-label">Upload your dataset</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="gbk-mini-note" style="margin-bottom:0.6rem;">Use a clean Excel file with one row per respondent and one column per survey question, metric, or segment.</div>',
+        unsafe_allow_html=True,
+    )
+    uploaded_file = st.file_uploader("Upload Excel workbook (.xlsx)", type=["xlsx"], key="dashboard_upload", label_visibility="collapsed")
 
     if uploaded_file:
         base_signature = (uploaded_file.name, getattr(uploaded_file, "size", None))
@@ -974,7 +1099,7 @@ def render_dashboard():
         if sheet_names:
             if len(sheet_names) > 1:
                 selected_sheet = st.selectbox(
-                    "Excel sheet",
+                    "Choose the worksheet to analyze",
                     sheet_names,
                     index=0,
                     key=f"sheet_select_{base_signature[0]}_{base_signature[1]}",
@@ -1012,93 +1137,119 @@ def render_dashboard():
     meta = st.session_state.uploaded_meta
 
     if df_raw is None or df_num is None:
-        st.markdown('<div class="gbk-note" style="color:rgba(255,255,255,0.25);">Upload a clean .xlsx dataset to begin.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="gbk-note" style="color:rgba(255,255,255,0.35);">Upload a clean .xlsx workbook to begin. The app will suggest likely outcome, predictor, and subgroup columns.</div>', unsafe_allow_html=True)
         return
 
     c1, c2, c3, c4 = st.columns(4)
     c1.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">File</div><div class="gbk-card-text" style="font-size:13px;">{st.session_state.uploaded_filename}</div></div>', unsafe_allow_html=True)
     c2.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Respondents</div><div class="gbk-stat">{df_raw.shape[0]:,}</div></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Total Columns</div><div class="gbk-stat">{df_raw.shape[1]:,}</div></div>', unsafe_allow_html=True)
-    c4.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Model-Ready</div><div class="gbk-stat">{df_num.shape[1]:,}</div></div>', unsafe_allow_html=True)
+    c3.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Total columns</div><div class="gbk-stat">{df_raw.shape[1]:,}</div></div>', unsafe_allow_html=True)
+    c4.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Numeric inputs</div><div class="gbk-stat">{df_num.shape[1]:,}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    y_options = meta.get("outcome_candidates") or df_num.columns.tolist()
-    driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in y_options]
+    auto_outcome_candidates = [c for c in (meta.get("outcome_candidates") or []) if c in df_num.columns]
+    y_options = auto_outcome_candidates + [c for c in df_num.columns.tolist() if c not in auto_outcome_candidates]
+    driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in auto_outcome_candidates]
     compare_options = meta.get("subgroup_candidates") or []
-
-    with st.expander("Advanced column setup"):
-        st.markdown(
-            '<div class="gbk-note">Use these controls when the automatic column detection needs a light correction. The backend still receives only the selected Y, X, and subgroup fields from the final setup below.</div>',
-            unsafe_allow_html=True,
-        )
-        y_options = st.multiselect(
-            "Outcome candidate columns",
-            df_num.columns.tolist(),
-            default=[c for c in y_options if c in df_num.columns],
-            format_func=display_name,
-            key="advanced_y_candidates",
-        ) or y_options
-        driver_candidates = st.multiselect(
-            "Driver candidate columns",
-            [c for c in df_num.columns if c not in y_options],
-            default=[c for c in driver_candidates if c in df_num.columns and c not in y_options],
-            format_func=display_name,
-            key="advanced_x_candidates",
-        ) or driver_candidates
-        compare_options = st.multiselect(
-            "Subgroup candidate columns",
-            df_raw.columns.tolist(),
-            default=[c for c in compare_options if c in df_raw.columns],
-            format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)",
-            key="advanced_subgroup_candidates",
-        ) or compare_options
 
     with st.container():
 
         # Step 1
-        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Outcome variable (Y)</div><div class="gbk-note">Select the business outcome you want to explain. If no likely outcome name is detected, all numeric columns are available here.</div></div>', unsafe_allow_html=True)
-        y_var = st.selectbox("Y variable", ["(select)"] + y_options, format_func=lambda c: display_name(c) if c != "(select)" else "— select outcome —", label_visibility="collapsed", key="dash_y")
-        y_selected = y_var if y_var != "(select)" else None
+        outcome_helper = (
+            "We auto-selected the most likely outcome. Click the field below and type a keyword to change it if needed."
+            if auto_outcome_candidates
+            else "Choose the outcome you want to explain. Click the field below and type a keyword to search."
+        )
+        st.markdown(
+            '<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Choose the outcome</div>'
+            '<div class="gbk-note"><b>Outcome variable</b> means the result you want to improve or explain, such as satisfaction, consideration, renewal intent, or NPS. '
+            'Pick one result column. Ideally, higher values should mean a better or more desired outcome.'
+            f'<div class="gbk-mini-note">{outcome_helper}</div></div></div>',
+            unsafe_allow_html=True,
+        )
+        y_var = st.selectbox(
+            "Choose the outcome to explain",
+            y_options,
+            index=0 if auto_outcome_candidates else None,
+            format_func=display_name,
+            label_visibility="collapsed",
+            key="dash_y_choice",
+            placeholder="Search outcome variables...",
+            help="Click the field and type part of a variable name to search.",
+            filter_mode="fuzzy",
+        )
+        y_selected = y_var
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Step 2
         x_options = [c for c in driver_candidates if c != y_selected]
+        if "dash_x" in st.session_state:
+            st.session_state.dash_x = [c for c in st.session_state.dash_x if c in x_options]
         n_x = len(x_options)
         if n_x > 30:
-            x_hint = f'<div class="gbk-input-warning">⚠ {n_x} numeric columns detected. For cleaner KDA output, select the core driver variables instead of every numeric field.</div>'
+            x_hint = f'<div class="gbk-input-warning">Review recommended: {n_x} numeric columns were detected. For cleaner output, select the core driver questions instead of every numeric field.</div>'
         else:
             x_hint = f'<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">{n_x} numeric variable{"s" if n_x!=1 else ""} available.</div>'
 
         st.markdown(
-            f'<div class="gbk-panel"><div class="gbk-panel-title">Step 2 · Predictor variables (X)</div>'
-            f'<div class="gbk-note">Choose the driver variables to compare. Leave empty to use all detected numeric driver columns.</div>'
+            f'<div class="gbk-panel"><div class="gbk-panel-title">Step 2 · Choose the possible drivers</div>'
+            f'<div class="gbk-note"><b>Predictor variables</b> are the possible reasons behind the outcome. These are the survey questions, ratings, or metrics you want to compare as drivers. '
+            f'Choose variables the client can understand and potentially act on. Leave empty to use all detected numeric predictor columns.'
+            f'<div class="gbk-mini-note">Click the field below and type a keyword to search long variable lists before choosing predictors.</div></div>'
             f'{x_hint}</div>',
             unsafe_allow_html=True
         )
-        x_vars = st.multiselect("X variables", x_options, default=x_options[:12], format_func=display_name, label_visibility="collapsed", key="dash_x", placeholder="Detected brand image statements")
+        x_vars = st.multiselect(
+            "Choose predictor variables",
+            x_options,
+            default=x_options[:12],
+            format_func=display_name,
+            label_visibility="collapsed",
+            key="dash_x",
+            placeholder="Search variables...",
+            help="Click the field and type part of a variable name to search predictors.",
+            filter_mode="fuzzy",
+        )
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Step 3
-        st.markdown('<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Compare results by group (optional)</div><div class="gbk-note">This repeats the same 1Y + 12X analysis within each selected group. Use <b>brand</b> for brand-by-brand drivers, or demographic fields such as Gender, Age Range, region, ecosystem, purchase channel, or drop frequency. Brand lookup fields like top brand and ownership brand are intentionally hidden.</div></div>', unsafe_allow_html=True)
-        use_sg = st.checkbox("Compare results by group", key="dash_use_sg")
+        st.markdown(
+            '<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Compare groups (optional)</div>'
+            '<div class="gbk-note"><b>Subgroup analysis</b> runs the same driver analysis separately inside each group, such as brand, age range, region, market, or customer segment. '
+            'Use it when you need to know whether different audiences have different drivers. Skip it for one overall ranking.'
+            '<div class="gbk-mini-note">If you turn this on, click the field and type a keyword to search group variables.</div></div></div>',
+            unsafe_allow_html=True,
+        )
+        use_sg = st.checkbox("Compare by brand, market, or segment", key="dash_use_sg")
         sg_var = None
         if use_sg:
             if compare_options:
-                sg_raw = st.selectbox("Compare by", ["(select)"] + compare_options, format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)" if c != "(select)" else "— choose brand or segment —", label_visibility="collapsed", key="dash_sg")
-                sg_var = sg_raw if sg_raw != "(select)" else None
+                sg_raw = st.selectbox(
+                    "Choose the group to compare",
+                    compare_options,
+                    index=None,
+                    format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)",
+                    label_visibility="collapsed",
+                    key="dash_sg_search",
+                    placeholder="Search subgroup variables...",
+                    help="Click the field and type part of a variable name to search subgroup variables.",
+                    filter_mode="fuzzy",
+                )
+                sg_var = sg_raw
             else:
-                st.markdown('<div class="gbk-note">No suitable brand or segment columns detected.</div>', unsafe_allow_html=True)
-
+                st.markdown('<div class="gbk-note">No suitable group columns were detected.</div>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Step 4 — Method checkboxes with info boxes
         st.markdown(
-            '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Methods</div>'
-            '<div class="gbk-note">Choose one or more driver-analysis methods. '
-            'The backend will run selected methods and return a combined ranking.</div></div>',
+            '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Choose methods</div>'
+            '<div class="gbk-note">Methods are different lenses for ranking the same predictors. '
+            'A good default is <b>Correlation</b> plus <b>Regression</b> for a fast, easy-to-explain read. '
+            'Add <b>SHAP</b>, <b>Random Forest</b>, or <b>XGBoost</b> when you want an advanced check for patterns that may not be straight lines. '
+            'There is no need to select every method; use a few that fit the decision.</div></div>',
             unsafe_allow_html=True
         )
         default_methods = set(DEFAULT_METHODS)
@@ -1110,6 +1261,7 @@ def render_dashboard():
                     METHOD_LABELS.get(method_key, method_key),
                     value=method_key in default_methods,
                     key=f"dash_method_{method_key}",
+                    help=METHOD_INFO.get(method_key, {}).get("desc"),
                 )
             if checked:
                 selected_methods.append(method_key)
@@ -1120,33 +1272,34 @@ def render_dashboard():
 
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Bootstrap confidence intervals</div>'
-            '<div class="gbk-note">Leave this off for fast exploratory key driver analysis. '
-            f'When enabled, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times by default and computes CI bands only for the lighter, more stable methods: '
+            '<div class="gbk-note">Bootstrap adds uncertainty bands around the ranking. Leave it off for quick exploration. '
+            'Turn it on when scores are close together or when you want more confidence before sharing a final story. '
+            f'By default, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times and adds bands for the lighter methods: '
             '<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. '
-            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates, but are not bootstrapped by default because each resample would refit tree ensembles and, for SHAP, rebuild explanations. That cost multiplies quickly across subgroups, so these methods stay point-only unless we add a deliberately slower advanced path.</div></div>',
+            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates to keep run times practical.</div></div>',
             unsafe_allow_html=True,
         )
-        include_bootstrap = st.checkbox("Calculate bootstrap confidence intervals", value=False, key="dash_bootstrap")
+        include_bootstrap = st.checkbox("Show uncertainty bands", value=False, key="dash_bootstrap")
         bootstrap_resamples = DEFAULT_BOOTSTRAP_RESAMPLES
         selected_bootstrap_methods = [method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS]
         selected_heavy_methods = [method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS]
         if include_bootstrap:
             with st.expander("Bootstrap controls"):
                 bootstrap_resamples = st.number_input(
-                    "Bootstrap resamples",
+                    "Number of bootstrap samples",
                     min_value=20,
                     max_value=300,
                     value=DEFAULT_BOOTSTRAP_RESAMPLES,
                     step=10,
-                    help="More resamples make intervals smoother but slower. Subgroup runs multiply this cost by the number of included groups.",
+                    help="More samples make bands smoother but slower. Group comparisons multiply the time by the number of included groups.",
                     key="bootstrap_resamples",
                 )
             ci_method_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_bootstrap_methods) or "None"
             point_only_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_heavy_methods) or "None"
             st.markdown(
                 f'<div class="gbk-note" style="margin-top:0.5rem;">'
-                f'<b>CI will be calculated for:</b> {ci_method_label}<br>'
-                f'<b>Point-only methods:</b> {point_only_label}'
+                f'<b>Uncertainty bands will be shown for:</b> {ci_method_label}<br>'
+                f'<b>Shown without bands:</b> {point_only_label}'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -1154,26 +1307,33 @@ def render_dashboard():
         st.markdown("<br>", unsafe_allow_html=True)
 
         # Pipeline summary
-        x_label = ", ".join(display_name(c) for c in x_vars) if x_vars else "All variables"
+        if x_vars:
+            preview_vars = ", ".join(display_name(c) for c in x_vars[:6])
+            x_label = f"{len(x_vars)} selected: {preview_vars}"
+            if len(x_vars) > 6:
+                x_label += f" + {len(x_vars) - 6} more"
+        else:
+            x_label = f"All detected predictors ({len(x_options)})"
         sg_label = f"Compare by {display_name(sg_var)}" if use_sg and sg_var else "Overall only"
         y_label = display_name(y_selected) if y_selected else "Not selected"
         method_label = ", ".join(METHOD_LABELS.get(m, m) for m in selected_methods) if selected_methods else "None"
         ci_label = "On" if include_bootstrap else "Off"
         st.markdown(f"""
         <div class="gbk-panel" style="border-color:rgba(232,80,58,0.3);">
-          <div class="gbk-panel-title">Pipeline summary</div>
+          <div class="gbk-panel-title">Review setup before running</div>
+          <div class="gbk-mini-note" style="margin:0 0 0.75rem;">This is the analysis the app will run.</div>
           <div class="gbk-summary-grid">
-            <div><div class="gbk-summary-key">Y</div><div class="gbk-summary-val">{y_label}</div></div>
-            <div><div class="gbk-summary-key">X vars</div><div class="gbk-summary-val">{x_label}</div></div>
-            <div><div class="gbk-summary-key">Subgroup</div><div class="gbk-summary-val">{sg_label}</div></div>
-            <div><div class="gbk-summary-key">Methods / CI</div><div class="gbk-summary-val">{method_label}<br>Bootstrap: {ci_label}</div></div>
+            <div><div class="gbk-summary-key">Outcome</div><div class="gbk-summary-val">{y_label}</div></div>
+            <div><div class="gbk-summary-key">Predictors</div><div class="gbk-summary-val">{x_label}</div></div>
+            <div><div class="gbk-summary-key">Group view</div><div class="gbk-summary-val">{sg_label}</div></div>
+            <div><div class="gbk-summary-key">Methods / uncertainty</div><div class="gbk-summary-val">{method_label}<br>Bands: {ci_label}</div></div>
           </div>
         </div>
         """, unsafe_allow_html=True)
 
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
-            run_clicked = st.button("Run Analysis", width="stretch")
+            run_clicked = st.button("Run Driver Analysis", width="stretch")
         with btn_col2:
             clear_clicked = st.button("Clear Results", width="stretch")
 
@@ -1182,9 +1342,9 @@ def render_dashboard():
 
     if run_clicked:
         if not y_selected:
-            st.error("Please select an outcome variable (Y).")
+            st.error("Please choose the outcome you want to explain.")
         else:
-            with st.spinner(f"Running {method_label}..."):
+            with st.spinner(f"Running driver analysis with {method_label}..."):
                 result = run_analysis(
                     df_num,
                     df_raw,
@@ -1204,48 +1364,62 @@ def render_dashboard():
             st.error(result["error"])
         elif result["mode"] == "single":
             display_methods = st.multiselect(
-                "Methods shown in chart",
+                "Methods to show in chart",
                 result["methods"],
                 default=result["methods"],
                 format_func=lambda method: METHOD_LABELS.get(method, method),
                 key="single_chart_methods",
+                help="Use this to simplify the chart view without rerunning the analysis.",
             )
             active_methods = display_methods or result["methods"]
+            render_results_guide(result["target"], active_methods)
             chart_x_domain = chart_range_control(result["kda_result"], active_methods, "single_chart")
             render_interval_chart(
                 result["kda_result"],
                 active_methods,
-                title="Interactive driver comparison",
+                title="Driver ranking chart",
                 chart_x_domain=chart_x_domain,
             )
             render_insights(result["target"], result["driver_scores"])
             render_next_steps(result["target"], result["driver_scores"])
             for warning in result.get("warnings", []):
                 st.warning(warning)
-            with st.expander("Actual score export table"):
-                st.dataframe(result["export_table"], width="stretch")
-                st.download_button(
-                    "Download actual scores CSV",
-                    result["export_table"].to_csv(index=False).encode("utf-8"),
-                    file_name="driver_actual_scores.csv",
-                    mime="text/csv",
-                    width="stretch",
+            with st.expander("Detailed score export"):
+                st.markdown(
+                    '<div class="gbk-mini-note">Use this table for QA, appendices, or deeper method review. The chart above is the simpler consultant view.</div>',
+                    unsafe_allow_html=True,
                 )
-            with st.expander("Ranking summary"):
+                st.dataframe(result["export_table"], width="stretch")
+            with st.expander("Final ranking summary"):
                 render_detail_table(result["driver_scores"])
+                st.markdown(
+                    '<div class="gbk-mini-note">This detail table shows the final rank calculations used to order the drivers.</div>',
+                    unsafe_allow_html=True,
+                )
                 st.dataframe(result["kda_result"].ranking_table, width="stretch")
-            with st.expander("Method diagnostics"):
+            with st.expander("Technical diagnostics"):
+                st.markdown(
+                    '<div class="gbk-mini-note">Use diagnostics for data quality checks, model review, or troubleshooting.</div>',
+                    unsafe_allow_html=True,
+                )
                 st.dataframe(result["kda_result"].diagnostics, width="stretch")
         elif result["mode"] == "subgroup":
-            st.markdown(f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div><div class="gbk-note">Each section repeats the same selected Y and X variables within one <b>{_auto_label(result["sg_var"])}</b> group.</div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div>'
+                f'<div class="gbk-note">Each section repeats the same outcome and predictor setup within one <b>{_auto_label(result["sg_var"])}</b> group. '
+                f'Use this view to see where recommendations should change by audience, brand, or segment.</div></div>',
+                unsafe_allow_html=True,
+            )
             display_methods = st.multiselect(
-                "Methods shown in subgroup charts",
+                "Methods to show in subgroup charts",
                 result["methods"],
                 default=result["methods"],
                 format_func=lambda method: METHOD_LABELS.get(method, method),
                 key="subgroup_chart_methods",
+                help="Use this to simplify all subgroup charts without rerunning the analysis.",
             )
             active_methods = display_methods or result["methods"]
+            render_results_guide(result["target"], active_methods, subgroup_label=result["sg_var"])
             for warning in result.get("warnings", []):
                 st.warning(warning)
             summary = result.get("subgroup_summary")
@@ -1255,10 +1429,14 @@ def render_dashboard():
                 st.markdown(
                     f'<div class="gbk-panel"><div class="gbk-panel-title">Subgroup run status</div>'
                     f'<div class="gbk-note"><b>{included_n}</b> groups included · <b>{skipped_n}</b> groups skipped. '
-                    f'Skipped groups are excluded from charts and exports because they do not have enough complete rows for the selected Y/X setup.</div></div>',
+                    f'Skipped groups are excluded from charts and exports because they do not have enough complete rows for the selected outcome and predictor setup.</div></div>',
                     unsafe_allow_html=True,
                 )
                 with st.expander("Subgroup status table"):
+                    st.markdown(
+                        '<div class="gbk-mini-note">This table explains which groups were included and why any small groups were skipped.</div>',
+                        unsafe_allow_html=True,
+                    )
                     st.dataframe(summary, width="stretch")
             chart_x_domain = chart_range_control(result["kda_result"], active_methods, "subgroup_chart")
             for item in result["results"]:
@@ -1274,32 +1452,49 @@ def render_dashboard():
                     render_interval_chart(
                         item["kda_result"],
                         active_methods,
-                        title=f"All drivers — {item['group']}",
+                        title=f"Driver ranking — {item['group']}",
                         chart_x_domain=chart_x_domain,
                     )
+                    st.markdown(
+                        '<div class="gbk-mini-note">Detailed scores for this group. Use the chart for the quick read and the table for appendix or QA detail.</div>',
+                        unsafe_allow_html=True,
+                    )
                     st.dataframe(item["export_table"], width="stretch")
-            with st.expander("Combined subgroup score export"):
+            with st.expander("Downloadable subgroup scores"):
+                st.markdown(
+                    '<div class="gbk-mini-note">This combined table stacks all included group-level rankings into one export.</div>',
+                    unsafe_allow_html=True,
+                )
                 st.dataframe(result["subgroup_export_table"], width="stretch")
                 st.download_button(
-                    "Download subgroup actual scores CSV",
+                    "Download subgroup score table CSV",
                     result["subgroup_export_table"].to_csv(index=False).encode("utf-8"),
                     file_name="subgroup_driver_actual_scores.csv",
                     mime="text/csv",
                     width="stretch",
                 )
             with st.expander("Overall ranking summary"):
+                st.markdown(
+                    '<div class="gbk-mini-note">Use this as the overall reference ranking alongside the separate subgroup views.</div>',
+                    unsafe_allow_html=True,
+                )
                 st.dataframe(result["kda_result"].ranking_table, width="stretch")
 
     with st.expander("Raw data preview"):
+        st.markdown(
+            '<div class="gbk-mini-note">First five rows from the uploaded file.</div>',
+            unsafe_allow_html=True,
+        )
         st.dataframe(df_raw.head(), width="stretch")
 
-    with st.expander("Cleaning details"):
+    with st.expander("Data preparation details"):
         st.markdown(f"""
         <div class="gbk-note">
-          <b>Excluded (ID/date/meta):</b><br>{pill_tags(meta['excluded_cols'])}<br><br>
-          <b>Dropped (high missing):</b><br>{pill_tags(meta['drop_missing_cols'])}<br><br>
-          <b>Subgroup candidates:</b><br>{pill_tags(meta['subgroup_candidates'])}<br><br>
-          <b>Dropped (constant):</b><br>{pill_tags(meta['constant_cols'])}
+          These automatic checks keep obvious ID, date, lookup, and unusable columns out of the analysis-ready set.<br><br>
+          <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta['excluded_cols'])}<br><br>
+          <b>Dropped because of high missing data:</b><br>{pill_tags(meta['drop_missing_cols'])}<br><br>
+          <b>Suggested subgroup columns:</b><br>{pill_tags(meta['subgroup_candidates'])}<br><br>
+          <b>Dropped because all values were the same:</b><br>{pill_tags(meta['constant_cols'])}
         </div>
         """, unsafe_allow_html=True)
 
