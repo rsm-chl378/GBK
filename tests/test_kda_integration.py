@@ -16,6 +16,7 @@ from GBK_app import (
     build_driver_interval_chart,
     build_interactive_chart_data,
     _client_style_shapley_table,
+    build_interactive_driver_chart,
     prepare_model_data,
     read_uploaded_dataset,
     run_analysis,
@@ -526,6 +527,26 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
             _driver_axis_sort(chart_df),
             ["Top Driver", "Middle Driver", "Bottom Driver"],
         )
+
+    def test_interactive_chart_uses_gbk_dark_background(self):
+        importance_table = pd.DataFrame(
+            {
+                "driver": ["trust", "value", "service"],
+                "mean_method_index": [150.0, 100.0, 50.0],
+                "correlation": [0.9, 0.6, 0.3],
+                "correlation_index": [150.0, 100.0, 50.0],
+            }
+        )
+
+        chart = build_interactive_driver_chart(importance_table, ["correlation"])
+        spec = chart.to_dict()
+
+        self.assertEqual(spec["background"], "#334651")
+        self.assertEqual(spec["config"]["view"]["fill"], "#334651")
+        self.assertEqual(spec["config"]["axis"]["labelColor"], "#C7D8E4")
+        self.assertEqual(spec["config"]["axis"]["gridColor"], "#5E7486")
+        self.assertNotIn(spec["background"].lower(), {"#000", "#000000", "black"})
+        self.assertNotIn(spec["background"], set(METHOD_COLORS.values()))
 
     def test_default_methods_are_correlation_and_regression(self):
         self.assertEqual(DEFAULT_METHODS, ("correlation", "regression"))

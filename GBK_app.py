@@ -207,25 +207,57 @@ div[data-testid="stMultiSelect"] [aria-disabled="true"] * {
   opacity: 1 !important;
 }
 div[data-baseweb="popover"],
-div[data-baseweb="popover"] *,
 div[data-baseweb="menu"],
-div[data-baseweb="menu"] *,
 div[role="listbox"],
-div[role="listbox"] *,
-ul[role="listbox"],
-ul[role="listbox"] *,
-li[role="option"],
+ul[role="listbox"] {
+  background: #0E141A !important;
+  color: #C7D8E4 !important;
+  border-color: rgba(199,216,228,0.22) !important;
+}
+div[data-baseweb="popover"] input {
+  background: #26343E !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  caret-color: #F76362 !important;
+}
+div[data-baseweb="menu"] [role="option"],
+div[role="listbox"] [role="option"],
+ul[role="listbox"] [role="option"],
+ul[role="listbox"] li,
+div[data-baseweb="popover"] [aria-selected="false"],
+li[role="option"] {
+  background: #0E141A !important;
+  color: #C7D8E4 !important;
+  -webkit-text-fill-color: #C7D8E4 !important;
+}
+div[data-baseweb="menu"] [role="option"] *,
+div[role="listbox"] [role="option"] *,
+ul[role="listbox"] [role="option"] *,
+ul[role="listbox"] li *,
+div[data-baseweb="popover"] [aria-selected="false"] *,
 li[role="option"] * {
-  color: #1F2D36 !important;
-  -webkit-text-fill-color: #1F2D36 !important;
+  color: #C7D8E4 !important;
+  -webkit-text-fill-color: #C7D8E4 !important;
 }
 div[data-baseweb="popover"] div[aria-selected="true"],
 div[data-baseweb="popover"] div[aria-selected="true"] *,
+div[data-baseweb="popover"] [role="option"][aria-selected="true"],
+div[data-baseweb="popover"] [role="option"][aria-selected="true"] *,
+div[data-baseweb="popover"] [role="option"]:hover,
+div[data-baseweb="popover"] [role="option"]:hover *,
+div[data-baseweb="popover"] [aria-selected="true"],
+div[data-baseweb="popover"] [aria-selected="true"] *,
+div[data-baseweb="popover"] [data-highlighted="true"],
+div[data-baseweb="popover"] [data-highlighted="true"] *,
 div[role="listbox"] div[aria-selected="true"],
-div[role="listbox"] div[aria-selected="true"] * {
-  background: #E9EEF2 !important;
-  color: #1F2D36 !important;
-  -webkit-text-fill-color: #1F2D36 !important;
+div[role="listbox"] div[aria-selected="true"] *,
+div[role="listbox"] [role="option"]:hover,
+div[role="listbox"] [role="option"]:hover *,
+ul[role="listbox"] li:hover,
+ul[role="listbox"] li:hover * {
+  background: #334651 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
 }
 div[data-baseweb="popover"]:has(div[data-baseweb="tooltip"]),
 div[data-baseweb="popover"]:has(div[role="tooltip"]),
@@ -277,15 +309,52 @@ div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true
 
 div[data-testid="stNumberInput"] label,
 div[data-testid="stNumberInput"] label p,
-div[data-testid="stNumberInput"] label span {
+div[data-testid="stNumberInput"] label span,
+div[data-testid="stTextInput"] label,
+div[data-testid="stTextInput"] label p,
+div[data-testid="stTextInput"] label span,
+div[data-testid="stTextArea"] label,
+div[data-testid="stTextArea"] label p,
+div[data-testid="stTextArea"] label span {
   color: rgba(255,255,255,0.86) !important;
 }
-div[data-testid="stNumberInput"] input {
-  color: #1F2D36 !important;
-  -webkit-text-fill-color: #1F2D36 !important;
+div[data-testid="stNumberInput"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextArea"] textarea {
+  background: #26343E !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  caret-color: #F76362 !important;
+  border-color: rgba(199,216,228,0.24) !important;
+}
+div[data-testid="stNumberInput"] [data-baseweb="input"],
+div[data-testid="stTextInput"] [data-baseweb="input"],
+div[data-testid="stTextArea"] [data-baseweb="textarea"] {
+  background: #26343E !important;
+  border-color: rgba(199,216,228,0.24) !important;
+}
+div[data-testid="stNumberInput"] [data-baseweb="input"] *,
+div[data-testid="stTextInput"] [data-baseweb="input"] *,
+div[data-testid="stTextArea"] [data-baseweb="textarea"] * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+div[data-testid="stNumberInput"] input::placeholder,
+div[data-testid="stTextInput"] input::placeholder,
+div[data-testid="stTextArea"] textarea::placeholder {
+  color: rgba(199,216,228,0.62) !important;
+  -webkit-text-fill-color: rgba(199,216,228,0.62) !important;
+  opacity: 1 !important;
 }
 div[data-testid="stNumberInput"] button {
-  color: #1F2D36 !important;
+  background: #26343E !important;
+  color: #C7D8E4 !important;
+  border-color: rgba(199,216,228,0.24) !important;
+}
+div[data-testid="stNumberInput"] button svg {
+  color: #C7D8E4 !important;
+  fill: #C7D8E4 !important;
+  stroke: #C7D8E4 !important;
 }
 
 div[data-testid="stFileUploader"] section {
@@ -328,6 +397,12 @@ details > div {
 }
 
 div[data-testid="stDataFrame"] { background: #334651 !important; border-radius: 8px !important; }
+div[data-testid="stVegaLiteChart"],
+div[data-testid="stVegaLiteChart"] > div,
+div[data-testid="stPlotlyChart"],
+div[data-testid="stPlotlyChart"] > div {
+  background: #334651 !important;
+}
 
 .stMarkdown p, .stMarkdown li { color: rgba(255,255,255,0.84) !important; }
 .stMarkdown strong, .stMarkdown b { color: #FFFFFF !important; }
@@ -375,6 +450,10 @@ NAME_MAP = {
     "C12": "Retailer",
 }
 BAR_COLORS = ["#F76362", "#C7D8E4", "#789FC0", "#F9BDBC", "#5E7486"]
+GBK_CHART_BG = "#334651"
+GBK_CHART_TEXT = "#E9EEF2"
+GBK_CHART_MUTED_TEXT = "#C7D8E4"
+GBK_CHART_GRID = "#5E7486"
 DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
@@ -762,6 +841,36 @@ def _driver_axis_sort(chart_df):
         .tolist()
     )
 
+def apply_gbk_altair_theme(chart):
+    return (
+        chart.properties(background=GBK_CHART_BG)
+        .configure_view(fill=GBK_CHART_BG, stroke=None)
+        .configure_axis(
+            labelColor=GBK_CHART_MUTED_TEXT,
+            titleColor=GBK_CHART_TEXT,
+            gridColor=GBK_CHART_GRID,
+            domainColor=GBK_CHART_GRID,
+            tickColor=GBK_CHART_GRID,
+            labelFont="Inter",
+            titleFont="Inter",
+            labelFontSize=12,
+            titleFontSize=13,
+            gridOpacity=0.35,
+            domainOpacity=0.45,
+            tickOpacity=0.45,
+        )
+        .configure_legend(
+            labelColor=GBK_CHART_MUTED_TEXT,
+            titleColor=GBK_CHART_TEXT,
+            labelFont="Inter",
+            titleFont="Inter",
+            labelFontSize=12,
+            titleFontSize=13,
+            symbolOpacity=0.95,
+        )
+        .configure_title(color=GBK_CHART_TEXT, font="Inter")
+    )
+
 def build_interactive_driver_chart(importance_table, methods, x_domain_override=None):
     chart_df = build_interactive_chart_data(importance_table, methods)
     if chart_df.empty:
@@ -814,13 +923,14 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     points = base.mark_circle(size=90).encode(
         x=alt.X("score:Q", title="Indexed score (average = 100)", scale=alt.Scale(domain=x_domain, zero=False)),
     ).add_params(nearest)
-    return (ci + points).properties(height=max(360, 34 * len(y_sort)), width="container")
+    chart = (ci + points).properties(height=max(360, 34 * len(y_sort)), width="container")
+    return apply_gbk_altair_theme(chart)
 
 def render_interval_chart(kda_result, methods, title="Driver importance", chart_x_domain=None):
     st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
     chart = build_interactive_driver_chart(kda_result.importance_table, methods, chart_x_domain)
     if chart is not None:
-        st.altair_chart(chart, width="stretch")
+        st.altair_chart(chart, width="stretch", theme=None)
     ci_methods = [
         method
         for method in methods
