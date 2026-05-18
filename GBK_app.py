@@ -439,6 +439,7 @@ def configure_page():
             st.session_state[k] = v
     st.markdown(PAGE_STYLE, unsafe_allow_html=True)
 
+
 NAME_MAP = {
     "C5_FINALr6": "Overall Satisfaction",
     "C6": "Product Quality",
@@ -551,14 +552,29 @@ def _auto_label(col):
     s = _re.sub(r"([a-z])([A-Z])", r"\1 \2", s)
     return _re.sub(r"\s+", " ", s).strip().title()
 
+
 def display_name(col):
     return NAME_MAP.get(col, _auto_label(col))
 
+
 def is_excluded_column(col):
-    return any(k in str(col).lower() for k in [
-        "uuid", "record", "date", "start_date", "psid", "pid",
-        "marker", "status", "qualityscore", "linercheck", "loi"
-    ])
+    return any(
+        k in str(col).lower()
+        for k in [
+            "uuid",
+            "record",
+            "date",
+            "start_date",
+            "psid",
+            "pid",
+            "marker",
+            "status",
+            "qualityscore",
+            "linercheck",
+            "loi",
+        ]
+    )
+
 
 def is_lookup_column(col):
     name = str(col).lower()
@@ -569,9 +585,11 @@ def is_lookup_column(col):
         or name.startswith("ownership_brand")
     )
 
+
 def is_outcome_column(col):
     name = str(col).lower()
     return "consideration" in name or "satisfaction" in name
+
 
 def is_segment_column(col):
     name = str(col).lower()
@@ -588,10 +606,17 @@ def is_segment_column(col):
     ]
     return any(token in name for token in segment_tokens)
 
+
 def is_driver_column(col):
-    if is_excluded_column(col) or is_lookup_column(col) or is_outcome_column(col) or is_segment_column(col):
+    if (
+        is_excluded_column(col)
+        or is_lookup_column(col)
+        or is_outcome_column(col)
+        or is_segment_column(col)
+    ):
         return False
     return str(col).lower() != "brand"
+
 
 def is_subgroup_candidate(df, col):
     if is_excluded_column(col) or is_lookup_column(col) or is_outcome_column(col):
@@ -605,6 +630,7 @@ def is_subgroup_candidate(df, col):
         return True
     return df[col].dtype == object and unique <= 12
 
+
 def is_control_candidate(df, col):
     if is_excluded_column(col) or is_outcome_column(col):
         return False
@@ -617,6 +643,7 @@ def is_control_candidate(df, col):
         return True
     return df[col].dtype == object or unique <= 20
 
+
 def prepare_model_data(df):
     df = df.copy()
     df.columns = [str(c).strip() for c in df.columns]
@@ -625,8 +652,12 @@ def prepare_model_data(df):
     df_num = df_model.select_dtypes(include=["number"]).copy()
     outcome_candidates = [c for c in df_num.columns if is_outcome_column(c)]
     driver_candidates = [c for c in df_num.columns if is_driver_column(c)]
-    subgroup_candidates = [c for c in df_model.columns if is_subgroup_candidate(df_model, c)]
-    control_candidates = [c for c in df_model.columns if is_control_candidate(df_model, c)]
+    subgroup_candidates = [
+        c for c in df_model.columns if is_subgroup_candidate(df_model, c)
+    ]
+    control_candidates = [
+        c for c in df_model.columns if is_control_candidate(df_model, c)
+    ]
 
     missing_ratio = df_num.isna().mean()
     high_missing = missing_ratio[missing_ratio > 0.4].index.tolist()
@@ -641,18 +672,24 @@ def prepare_model_data(df):
     driver_candidates = [c for c in driver_candidates if c in df_num.columns]
     for col in df_num.columns:
         df_num[col] = df_num[col].fillna(df_num[col].median())
-    return df, df_num, {
-        "excluded_cols": excluded_cols,
-        "drop_missing_cols": drop_missing_cols,
-        "subgroup_candidates": subgroup_candidates,
-        "control_candidates": control_candidates,
-        "outcome_candidates": outcome_candidates,
-        "driver_candidates": driver_candidates,
-        "constant_cols": constant_cols,
-    }
+    return (
+        df,
+        df_num,
+        {
+            "excluded_cols": excluded_cols,
+            "drop_missing_cols": drop_missing_cols,
+            "subgroup_candidates": subgroup_candidates,
+            "control_candidates": control_candidates,
+            "outcome_candidates": outcome_candidates,
+            "driver_candidates": driver_candidates,
+            "constant_cols": constant_cols,
+        },
+    )
+
 
 def _uploaded_name(uploaded_file):
     return str(getattr(uploaded_file, "name", "") or "")
+
 
 def get_uploaded_sheet_names(uploaded_file):
     if uploaded_file is None or _uploaded_name(uploaded_file).lower().endswith(".csv"):
@@ -662,11 +699,13 @@ def get_uploaded_sheet_names(uploaded_file):
     excel = pd.ExcelFile(uploaded_file)
     return excel.sheet_names
 
+
 def default_sheet_name(sheet_names, preferred=None):
     for candidate in [preferred, "tool_ready", "consideration_long"]:
         if candidate and candidate in sheet_names:
             return candidate
     return sheet_names[0] if sheet_names else None
+
 
 def read_uploaded_dataset(uploaded_file, sheet_name=None):
     if hasattr(uploaded_file, "seek"):
@@ -677,6 +716,7 @@ def read_uploaded_dataset(uploaded_file, sheet_name=None):
     selected_sheet = sheet_name or default_sheet_name(excel.sheet_names)
     return pd.read_excel(excel, sheet_name=selected_sheet)
 
+
 def infer_y_type_override(df, target):
     if target not in df.columns or not pd.api.types.is_numeric_dtype(df[target]):
         return None
@@ -686,27 +726,37 @@ def infer_y_type_override(df, target):
     unique_count = series.nunique()
     values = series.to_numpy(dtype=float)
     integer_like = np.all(np.isclose(values, np.round(values)))
-    if integer_like and 3 <= unique_count <= 7 and 1 <= series.min() and series.max() <= 7:
+    if (
+        integer_like
+        and 3 <= unique_count <= 7
+        and 1 <= series.min()
+        and series.max() <= 7
+    ):
         return "continuous"
     return None
+
 
 def pill_tags(items):
     if not items:
         return '<span style="color:rgba(255,255,255,0.3);font-size:13px;">None</span>'
     return "".join(f'<span class="gbk-tag">{x}</span>' for x in items)
 
+
 def render_method_info_box(method_key):
     info = METHOD_INFO.get(method_key)
     if not info:
         return
-    badge = '<span class="gbk-shap-badge">Recommended</span>' if info["recommended"] else ""
+    badge = (
+        '<span class="gbk-shap-badge">Recommended</span>' if info["recommended"] else ""
+    )
     st.markdown(
         f'<div class="gbk-method-box">'
         f'<div class="gbk-method-title">{info["title"]}{badge}</div>'
         f'<div class="gbk-method-desc">{info["desc"]}</div>'
-        f'</div>',
-        unsafe_allow_html=True
+        f"</div>",
+        unsafe_allow_html=True,
     )
+
 
 def render_bar_chart(driver_scores, title="Driver Importance", method_key=""):
     max_val = driver_scores.iloc[0] if len(driver_scores) else 1
@@ -720,19 +770,26 @@ def render_bar_chart(driver_scores, title="Driver Importance", method_key=""):
             f'<div class="gbk-bar-row">'
             f'<div class="gbk-bar-track"><div class="gbk-bar-fill" style="width:{pct}%;background:{color};"></div></div>'
             f'<div class="gbk-bar-val">{val:.3f}</div>'
-            f'</div></div>'
+            f"</div></div>"
         )
-    note = METHOD_INFO.get(method_key, {}).get("note", "Longer bar = stronger importance.")
+    note = METHOD_INFO.get(method_key, {}).get(
+        "note", "Longer bar = stronger importance."
+    )
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">{title}</div>{bars_html}'
         f'<div class="gbk-disclaimer">{note} Directional, not causal.</div></div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
 
 def build_driver_interval_chart(importance_table, methods):
     method_cols = [method for method in methods if method in importance_table.columns]
     if not method_cols:
-        method_cols = ["mean_method_index"] if "mean_method_index" in importance_table.columns else []
+        method_cols = (
+            ["mean_method_index"]
+            if "mean_method_index" in importance_table.columns
+            else []
+        )
     plot_df = importance_table.copy()
     if "mean_method_index" in plot_df.columns:
         plot_df = plot_df.sort_values("mean_method_index", ascending=True)
@@ -769,7 +826,14 @@ def build_driver_interval_chart(importance_table, methods):
                 alpha=0.95,
             )
         else:
-            ax.scatter(scores, y, color=color, s=28, label=METHOD_LABELS.get(method, method), alpha=0.95)
+            ax.scatter(
+                scores,
+                y,
+                color=color,
+                s=28,
+                label=METHOD_LABELS.get(method, method),
+                alpha=0.95,
+            )
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels([display_name(driver) for driver in plot_df["driver"]])
@@ -783,6 +847,7 @@ def build_driver_interval_chart(importance_table, methods):
         ax.legend(loc="lower right", frameon=False)
     fig.tight_layout()
     return fig
+
 
 def _normalize_like_main_scores(values, main_scores):
     finite = main_scores.replace([np.inf, -np.inf], np.nan).dropna()
@@ -799,10 +864,13 @@ def _normalize_like_main_scores(values, main_scores):
         out.loc[values.index] = values / mean_v * 100.0
     return out
 
+
 def build_interactive_chart_data(importance_table, methods):
     rows = []
     table = importance_table.copy()
-    sort_col = "mean_method_index" if "mean_method_index" in table.columns else methods[0]
+    sort_col = (
+        "mean_method_index" if "mean_method_index" in table.columns else methods[0]
+    )
     table = table.sort_values(sort_col, ascending=False).reset_index(drop=True)
     driver_order = table["driver"].tolist()
 
@@ -813,10 +881,17 @@ def build_interactive_chart_data(importance_table, methods):
         scores = table[score_col] if score_col in table.columns else table[method]
         lower = pd.Series(np.nan, index=table.index, dtype=float)
         upper = pd.Series(np.nan, index=table.index, dtype=float)
-        if f"{method}_ci_lower" in table.columns and f"{method}_ci_upper" in table.columns:
+        if (
+            f"{method}_ci_lower" in table.columns
+            and f"{method}_ci_upper" in table.columns
+        ):
             main_scores = table[method]
-            lower = _normalize_like_main_scores(table[f"{method}_ci_lower"], main_scores)
-            upper = _normalize_like_main_scores(table[f"{method}_ci_upper"], main_scores)
+            lower = _normalize_like_main_scores(
+                table[f"{method}_ci_lower"], main_scores
+            )
+            upper = _normalize_like_main_scores(
+                table[f"{method}_ci_upper"], main_scores
+            )
         for idx, row in table.iterrows():
             rows.append(
                 {
@@ -825,13 +900,22 @@ def build_interactive_chart_data(importance_table, methods):
                     "driver_order": driver_order.index(row["driver"]),
                     "method": METHOD_LABELS.get(method, method),
                     "method_key": method,
-                    "score": float(scores.iloc[idx]) if pd.notna(scores.iloc[idx]) else np.nan,
-                    "raw_score": float(row[method]) if pd.notna(row[method]) else np.nan,
-                    "ci_lower": float(lower.iloc[idx]) if pd.notna(lower.iloc[idx]) else np.nan,
-                    "ci_upper": float(upper.iloc[idx]) if pd.notna(upper.iloc[idx]) else np.nan,
+                    "score": float(scores.iloc[idx])
+                    if pd.notna(scores.iloc[idx])
+                    else np.nan,
+                    "raw_score": float(row[method])
+                    if pd.notna(row[method])
+                    else np.nan,
+                    "ci_lower": float(lower.iloc[idx])
+                    if pd.notna(lower.iloc[idx])
+                    else np.nan,
+                    "ci_upper": float(upper.iloc[idx])
+                    if pd.notna(upper.iloc[idx])
+                    else np.nan,
                 }
             )
     return pd.DataFrame(rows)
+
 
 def _driver_axis_sort(chart_df):
     return (
@@ -840,6 +924,7 @@ def _driver_axis_sort(chart_df):
         .sort_values("driver_order", ascending=True)["driver_label"]
         .tolist()
     )
+
 
 def apply_gbk_altair_theme(chart):
     return (
@@ -871,6 +956,7 @@ def apply_gbk_altair_theme(chart):
         .configure_title(color=GBK_CHART_TEXT, font="Inter")
     )
 
+
 def build_interactive_driver_chart(importance_table, methods, x_domain_override=None):
     chart_df = build_interactive_chart_data(importance_table, methods)
     if chart_df.empty:
@@ -879,10 +965,18 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     domain = [METHOD_LABELS.get(method, method) for method in methods]
     chart_colors = [METHOD_COLORS.get(method, "#789FC0") for method in methods]
     y_sort = _driver_axis_sort(chart_df)
-    finite_values = pd.concat(
-        [chart_df["score"], chart_df["ci_lower"].dropna(), chart_df["ci_upper"].dropna()],
-        ignore_index=True,
-    ).replace([np.inf, -np.inf], np.nan).dropna()
+    finite_values = (
+        pd.concat(
+            [
+                chart_df["score"],
+                chart_df["ci_lower"].dropna(),
+                chart_df["ci_upper"].dropna(),
+            ],
+            ignore_index=True,
+        )
+        .replace([np.inf, -np.inf], np.nan)
+        .dropna()
+    )
     if finite_values.empty:
         x_domain = [0, 100]
     else:
@@ -892,10 +986,16 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         x_domain = [min_x - pad, max_x + pad]
     if x_domain_override:
         x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
-    nearest = alt.selection_point(name="method_filter", fields=["method"], bind="legend")
+    nearest = alt.selection_point(
+        name="method_filter", fields=["method"], bind="legend"
+    )
     base = alt.Chart(chart_df).encode(
         y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
-        color=alt.Color("method:N", scale=alt.Scale(domain=domain, range=chart_colors), title="Method"),
+        color=alt.Color(
+            "method:N",
+            scale=alt.Scale(domain=domain, range=chart_colors),
+            title="Method",
+        ),
         opacity=alt.condition(nearest, alt.value(1), alt.value(0.04)),
         tooltip=[
             alt.Tooltip("driver_label:N", title="Driver"),
@@ -907,28 +1007,55 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         ],
     )
     ci_df = chart_df.dropna(subset=["ci_lower", "ci_upper"])
-    ci = alt.Chart(ci_df).mark_rule(strokeWidth=2).encode(
-        y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
-        x=alt.X("ci_lower:Q", title="Indexed score (average = 100)", scale=alt.Scale(domain=x_domain, zero=False)),
-        x2="ci_upper:Q",
-        color=alt.Color("method:N", scale=alt.Scale(domain=domain, range=chart_colors), title="Method"),
-        opacity=alt.condition(nearest, alt.value(0.75), alt.value(0.04)),
-        tooltip=[
-            alt.Tooltip("driver_label:N", title="Driver"),
-            alt.Tooltip("method:N", title="Method"),
-            alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
-            alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
-        ],
+    ci = (
+        alt.Chart(ci_df)
+        .mark_rule(strokeWidth=2)
+        .encode(
+            y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
+            x=alt.X(
+                "ci_lower:Q",
+                title="Indexed score (average = 100)",
+                scale=alt.Scale(domain=x_domain, zero=False),
+            ),
+            x2="ci_upper:Q",
+            color=alt.Color(
+                "method:N",
+                scale=alt.Scale(domain=domain, range=chart_colors),
+                title="Method",
+            ),
+            opacity=alt.condition(nearest, alt.value(0.75), alt.value(0.04)),
+            tooltip=[
+                alt.Tooltip("driver_label:N", title="Driver"),
+                alt.Tooltip("method:N", title="Method"),
+                alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
+                alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
+            ],
+        )
     )
-    points = base.mark_circle(size=90).encode(
-        x=alt.X("score:Q", title="Indexed score (average = 100)", scale=alt.Scale(domain=x_domain, zero=False)),
-    ).add_params(nearest)
-    chart = (ci + points).properties(height=max(360, 34 * len(y_sort)), width="container")
+    points = (
+        base.mark_circle(size=90)
+        .encode(
+            x=alt.X(
+                "score:Q",
+                title="Indexed score (average = 100)",
+                scale=alt.Scale(domain=x_domain, zero=False),
+            ),
+        )
+        .add_params(nearest)
+    )
+    chart = (ci + points).properties(
+        height=max(360, 34 * len(y_sort)), width="container"
+    )
     return apply_gbk_altair_theme(chart)
 
-def render_interval_chart(kda_result, methods, title="Driver importance", chart_x_domain=None):
+
+def render_interval_chart(
+    kda_result, methods, title="Driver importance", chart_x_domain=None
+):
     st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
-    chart = build_interactive_driver_chart(kda_result.importance_table, methods, chart_x_domain)
+    chart = build_interactive_driver_chart(
+        kda_result.importance_table, methods, chart_x_domain
+    )
     if chart is not None:
         st.altair_chart(chart, width="stretch", theme=None)
     ci_methods = [
@@ -949,14 +1076,23 @@ def render_interval_chart(kda_result, methods, title="Driver importance", chart_
             unsafe_allow_html=True,
         )
 
+
 def chart_range_control(kda_result, methods, key_prefix):
     chart_df = build_interactive_chart_data(kda_result.importance_table, methods)
     if chart_df.empty:
         return None
-    finite_values = pd.concat(
-        [chart_df["score"], chart_df["ci_lower"].dropna(), chart_df["ci_upper"].dropna()],
-        ignore_index=True,
-    ).replace([np.inf, -np.inf], np.nan).dropna()
+    finite_values = (
+        pd.concat(
+            [
+                chart_df["score"],
+                chart_df["ci_lower"].dropna(),
+                chart_df["ci_upper"].dropna(),
+            ],
+            ignore_index=True,
+        )
+        .replace([np.inf, -np.inf], np.nan)
+        .dropna()
+    )
     if finite_values.empty:
         return None
     min_x = min(0.0, float(finite_values.min()))
@@ -964,7 +1100,9 @@ def chart_range_control(kda_result, methods, key_prefix):
     pad = max((max_x - min_x) * 0.12, 10.0)
     full_domain = (float(np.floor(min_x - pad)), float(np.ceil(max_x + pad)))
     with st.expander("Chart display controls"):
-        auto_range = st.checkbox("Keep automatic chart scale", value=True, key=f"{key_prefix}_auto_range")
+        auto_range = st.checkbox(
+            "Keep automatic chart scale", value=True, key=f"{key_prefix}_auto_range"
+        )
         if auto_range:
             return None
         return st.slider(
@@ -976,6 +1114,7 @@ def chart_range_control(kda_result, methods, key_prefix):
             key=f"{key_prefix}_x_range",
         )
 
+
 def render_results_guide(target, methods, subgroup_label=None):
     t = display_name(target)
     method_text = ", ".join(METHOD_LABELS.get(method, method) for method in methods)
@@ -983,18 +1122,19 @@ def render_results_guide(target, methods, subgroup_label=None):
     if subgroup_label:
         subgroup_note = (
             f'<div class="gbk-mini-note"><b>Subgroup view:</b> Read each '
-            f'{display_name(subgroup_label)} group separately. A driver can be important for one group and less important for another.</div>'
+            f"{display_name(subgroup_label)} group separately. A driver can be important for one group and less important for another.</div>"
         )
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">How to read the results</div>'
         f'<div class="gbk-note"><b>Top drivers</b> are the predictors most strongly linked with <b>{t}</b> in this run. '
-        f'Read the ranking from top to bottom. Scores above 100 are stronger than the average driver; scores below 100 are weaker. '
-        f'When several methods point to the same top drivers, the story is usually more dependable. '
-        f'These results are directional, not proof of cause and effect.</div>'
+        f"Read the ranking from top to bottom. Scores above 100 are stronger than the average driver; scores below 100 are weaker. "
+        f"When several methods point to the same top drivers, the story is usually more dependable. "
+        f"These results are directional, not proof of cause and effect.</div>"
         f'<div class="gbk-mini-note"><b>Methods used:</b> {method_text}</div>'
-        f'{subgroup_note}</div>',
+        f"{subgroup_note}</div>",
         unsafe_allow_html=True,
     )
+
 
 def render_insights(target, driver_scores):
     names = [display_name(x) for x in driver_scores.index]
@@ -1007,14 +1147,15 @@ def render_insights(target, driver_scores):
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">Plain-language readout</div>'
         f'<div class="gbk-insight gbk-insight-red"><b>Lead driver</b><br>'
-        f'<b>{names[0]}</b> is the strongest predictor linked with <b>{t}</b>.</div>'
+        f"<b>{names[0]}</b> is the strongest predictor linked with <b>{t}</b>.</div>"
         f'<div class="gbk-insight gbk-insight-blue"><b>Next driver to review</b><br>'
-        f'<b>{n2}</b> is also meaningfully connected to this outcome.</div>'
+        f"<b>{n2}</b> is also meaningfully connected to this outcome.</div>"
         f'<div class="gbk-insight"><b>Supporting context</b><br>'
-        f'<b>{n3}</b> and <b>{n4}</b> may help round out the client discussion, especially if they fit the business context.</div>'
-        f'</div>',
-        unsafe_allow_html=True
+        f"<b>{n3}</b> and <b>{n4}</b> may help round out the client discussion, especially if they fit the business context.</div>"
+        f"</div>",
+        unsafe_allow_html=True,
     )
+
 
 def render_next_steps(target, driver_scores):
     names = [display_name(x) for x in driver_scores.index]
@@ -1031,18 +1172,19 @@ def render_next_steps(target, driver_scores):
         "<b>Add business judgment.</b> Treat the ranking as decision support, not a standalone recommendation.",
     ]
     items = "".join(
-        f'<div class="gbk-step-item"><div class="gbk-step-num">{i+1}</div><div>{s}</div></div>'
+        f'<div class="gbk-step-item"><div class="gbk-step-num">{i + 1}</div><div>{s}</div></div>'
         for i, s in enumerate(steps)
     )
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">Suggested consultant next steps</div>{items}</div>',
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
 
 def render_detail_table(ranked):
     rows = "".join(
         f"<tr>"
-        f"<td style='color:rgba(255,255,255,0.25);padding:6px 8px;'>{i+1}</td>"
+        f"<td style='color:rgba(255,255,255,0.25);padding:6px 8px;'>{i + 1}</td>"
         f"<td style='color:rgba(255,255,255,0.7);padding:6px 8px;'>{display_name(col)}</td>"
         f"<td style='color:rgba(255,255,255,0.35);padding:6px 8px;'>{val:.3f}</td>"
         f"</tr>"
@@ -1055,9 +1197,10 @@ def render_detail_table(ranked):
         f'<th style="text-align:left;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid rgba(255,255,255,0.08);">#</th>'
         f'<th style="text-align:left;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid rgba(255,255,255,0.08);">Driver</th>'
         f'<th style="text-align:left;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:2px;text-transform:uppercase;padding:0 8px 8px;border-bottom:1px solid rgba(255,255,255,0.08);">Score</th>'
-        f'</tr></thead><tbody>{rows}</tbody></table></div>',
-        unsafe_allow_html=True
+        f"</tr></thead><tbody>{rows}</tbody></table></div>",
+        unsafe_allow_html=True,
     )
+
 
 def _ranking_to_series(ranking_table):
     return pd.Series(
@@ -1065,21 +1208,28 @@ def _ranking_to_series(ranking_table):
         index=ranking_table["driver"],
     ).sort_values(ascending=False)
 
+
 def _importance_to_series(importance_table):
     table = importance_table.copy()
     if "mean_method_index" in table.columns:
         score_col = "mean_method_index"
     else:
         method_cols = [
-            col for col in table.columns
+            col
+            for col in table.columns
             if col not in {"driver", "average_rank", "median_rank", "top3_appearances"}
-            and not col.endswith(("_index", "_rank", "_warning", "_ci_lower", "_ci_upper"))
+            and not col.endswith(
+                ("_index", "_rank", "_warning", "_ci_lower", "_ci_upper")
+            )
             and pd.api.types.is_numeric_dtype(table[col])
         ]
         if not method_cols:
             return pd.Series(dtype=float)
         score_col = method_cols[0]
-    return pd.Series(table[score_col].to_numpy(), index=table["driver"]).sort_values(ascending=False)
+    return pd.Series(table[score_col].to_numpy(), index=table["driver"]).sort_values(
+        ascending=False
+    )
+
 
 def _importance_export_table(kda_result):
     table = kda_result.importance_table.copy()
@@ -1088,11 +1238,13 @@ def _importance_export_table(kda_result):
             table[f"{method}_sum100"] = table[method] * 100.0
     return table.reset_index(drop=True)
 
+
 def _subgroup_summary_table(kda_result):
     if kda_result.subgroup_summary is None:
         return pd.DataFrame(columns=["subgroup_level", "rows_used", "status", "reason"])
     cols = ["subgroup_level", "rows_used", "status", "reason"]
     return kda_result.subgroup_summary[cols].copy()
+
 
 def _combined_subgroup_export_table(kda_result, subgroup_var):
     rows = []
@@ -1104,6 +1256,7 @@ def _combined_subgroup_export_table(kda_result, subgroup_var):
     if not rows:
         return pd.DataFrame(columns=["subgroup_variable", "subgroup_level", "driver"])
     return pd.concat(rows, ignore_index=True)
+
 
 def _client_style_shapley_table(subgroup_export_table):
     required = {"subgroup_level", "driver", "shapley_lmg_sum100", "shapley_lmg_index"}
@@ -1130,9 +1283,14 @@ def _client_style_shapley_table(subgroup_export_table):
         level_table = subgroup_export_table.loc[
             subgroup_export_table["subgroup_level"] == level
         ].set_index("driver")
-        out[f"{level}_sum100"] = level_table.reindex(drivers)["shapley_lmg_sum100"].round(1).to_numpy()
-        out[f"{level}_average100"] = level_table.reindex(drivers)["shapley_lmg_index"].round(1).to_numpy()
+        out[f"{level}_sum100"] = (
+            level_table.reindex(drivers)["shapley_lmg_sum100"].round(1).to_numpy()
+        )
+        out[f"{level}_average100"] = (
+            level_table.reindex(drivers)["shapley_lmg_index"].round(1).to_numpy()
+        )
     return out
+
 
 def run_analysis(
     df_num,
@@ -1145,7 +1303,11 @@ def run_analysis(
     bootstrap_resamples=DEFAULT_BOOTSTRAP_RESAMPLES,
     control_vars=None,
 ):
-    predictors = [c for c in (x_vars if x_vars else df_num.columns) if c != target and c in df_num.columns]
+    predictors = [
+        c
+        for c in (x_vars if x_vars else df_num.columns)
+        if c != target and c in df_num.columns
+    ]
     if not predictors:
         return {"error": "No valid predictor columns available."}
     if not methods:
@@ -1153,7 +1315,12 @@ def run_analysis(
 
     controls = []
     for control in control_vars or []:
-        if control in df_raw.columns and control not in predictors and control != target and control != sg_var:
+        if (
+            control in df_raw.columns
+            and control not in predictors
+            and control != target
+            and control != sg_var
+        ):
             controls.append(control)
 
     model_df = df_num[[target, *predictors]].copy()
@@ -1171,12 +1338,20 @@ def run_analysis(
     }
     if controls:
         method_params["shapley_lmg"] = {"always_controls": True}
-    bootstrap_methods = [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS] if include_bootstrap else None
-    bootstrap_params = {
-        "n_resamples": int(bootstrap_resamples),
-        "random_state": 454,
-        "min_valid_resamples": 8,
-    } if include_bootstrap else None
+    bootstrap_methods = (
+        [method for method in methods if method in DEFAULT_BOOTSTRAP_METHODS]
+        if include_bootstrap
+        else None
+    )
+    bootstrap_params = (
+        {
+            "n_resamples": int(bootstrap_resamples),
+            "random_state": 454,
+            "min_valid_resamples": 8,
+        }
+        if include_bootstrap
+        else None
+    )
     y_type_override = infer_y_type_override(model_df, target)
 
     try:
@@ -1272,28 +1447,45 @@ def run_analysis(
         "y_type_override": y_type_override,
     }
 
+
 def render_dashboard():
     configure_page()
-    st.markdown("""
+    st.markdown(
+        """
     <div class="gbk-hero">
       <div class="gbk-eyebrow">GBK Toolbox</div>
       <h1>Driver<br>Insights Suite</h1>
       <p>Use survey data to see which questions are most closely linked to the outcome you care about.<br>
       Work left to right: upload, choose the outcome, choose possible drivers, optionally compare groups, then run.</p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
-    st.markdown('<div class="gbk-label">Upload your dataset</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="gbk-label">Upload your dataset</div>', unsafe_allow_html=True
+    )
     st.markdown(
         '<div class="gbk-mini-note" style="margin-bottom:0.6rem;">Use a clean Excel file with one row per respondent and one column per survey question, metric, or segment.</div>',
         unsafe_allow_html=True,
     )
-    uploaded_file = st.file_uploader("Upload Excel workbook (.xlsx)", type=["xlsx"], key="dashboard_upload", label_visibility="collapsed")
+    uploaded_file = st.file_uploader(
+        "Upload Excel workbook (.xlsx)",
+        type=["xlsx"],
+        key="dashboard_upload",
+        label_visibility="collapsed",
+    )
+    st.caption(
+        "Supported file type: .xlsx only. Upload a clean/model-ready workbook; the tool does not reshape raw data."
+    )
 
     if uploaded_file:
         base_signature = (uploaded_file.name, getattr(uploaded_file, "size", None))
         sheet_names = st.session_state.uploaded_sheet_names
-        if st.session_state.uploaded_file_signature and st.session_state.uploaded_file_signature[:2] == base_signature:
+        if (
+            st.session_state.uploaded_file_signature
+            and st.session_state.uploaded_file_signature[:2] == base_signature
+        ):
             sheet_names = sheet_names or [st.session_state.uploaded_sheet_name]
         else:
             try:
@@ -1320,7 +1512,10 @@ def render_dashboard():
                 )
 
         file_signature = (*base_signature, selected_sheet)
-        if selected_sheet and st.session_state.uploaded_file_signature == file_signature:
+        if (
+            selected_sheet
+            and st.session_state.uploaded_file_signature == file_signature
+        ):
             df_raw = st.session_state.uploaded_df_raw
             df_num = st.session_state.uploaded_df_num
             meta = st.session_state.uploaded_meta
@@ -1345,28 +1540,48 @@ def render_dashboard():
     meta = st.session_state.uploaded_meta
 
     if df_raw is None or df_num is None:
-        st.markdown('<div class="gbk-note" style="color:rgba(255,255,255,0.35);">Upload a clean .xlsx workbook to begin. The app will suggest likely outcome, predictor, and subgroup columns.</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="gbk-note" style="color:rgba(255,255,255,0.35);">Upload a clean .xlsx workbook to begin. The app will suggest likely outcome, predictor, and subgroup columns.</div>',
+            unsafe_allow_html=True,
+        )
         return
 
     c1, c2, c3, c4 = st.columns(4)
     file_label = st.session_state.uploaded_filename
     if st.session_state.uploaded_sheet_name:
         file_label = f"{file_label} · {st.session_state.uploaded_sheet_name}"
-    c1.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">File</div><div class="gbk-card-text" style="font-size:13px;">{file_label}</div></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Respondents</div><div class="gbk-stat">{df_raw.shape[0]:,}</div></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Total columns</div><div class="gbk-stat">{df_raw.shape[1]:,}</div></div>', unsafe_allow_html=True)
-    c4.markdown(f'<div class="gbk-card"><div class="gbk-card-kicker">Numeric inputs</div><div class="gbk-stat">{df_num.shape[1]:,}</div></div>', unsafe_allow_html=True)
+    c1.markdown(
+        f'<div class="gbk-card"><div class="gbk-card-kicker">File</div><div class="gbk-card-text" style="font-size:13px;">{file_label}</div></div>',
+        unsafe_allow_html=True,
+    )
+    c2.markdown(
+        f'<div class="gbk-card"><div class="gbk-card-kicker">Respondents</div><div class="gbk-stat">{df_raw.shape[0]:,}</div></div>',
+        unsafe_allow_html=True,
+    )
+    c3.markdown(
+        f'<div class="gbk-card"><div class="gbk-card-kicker">Total columns</div><div class="gbk-stat">{df_raw.shape[1]:,}</div></div>',
+        unsafe_allow_html=True,
+    )
+    c4.markdown(
+        f'<div class="gbk-card"><div class="gbk-card-kicker">Numeric inputs</div><div class="gbk-stat">{df_num.shape[1]:,}</div></div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    auto_outcome_candidates = [c for c in (meta.get("outcome_candidates") or []) if c in df_num.columns]
-    y_options = auto_outcome_candidates + [c for c in df_num.columns.tolist() if c not in auto_outcome_candidates]
-    driver_candidates = meta.get("driver_candidates") or [c for c in df_num.columns if c not in auto_outcome_candidates]
+    auto_outcome_candidates = [
+        c for c in (meta.get("outcome_candidates") or []) if c in df_num.columns
+    ]
+    y_options = auto_outcome_candidates + [
+        c for c in df_num.columns.tolist() if c not in auto_outcome_candidates
+    ]
+    driver_candidates = meta.get("driver_candidates") or [
+        c for c in df_num.columns if c not in auto_outcome_candidates
+    ]
     compare_options = meta.get("subgroup_candidates") or []
     control_candidates = meta.get("control_candidates") or []
 
     with st.container():
-
         # Step 1
         outcome_helper = (
             "We auto-selected the most likely outcome. Click the field below and type a keyword to change it if needed."
@@ -1376,7 +1591,7 @@ def render_dashboard():
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Choose the outcome</div>'
             '<div class="gbk-note"><b>Outcome variable</b> means the result you want to improve or explain, such as satisfaction, consideration, renewal intent, or NPS. '
-            'Pick one result column. Ideally, higher values should mean a better or more desired outcome.'
+            "Pick one result column. Ideally, higher values should mean a better or more desired outcome."
             f'<div class="gbk-mini-note">{outcome_helper}</div></div></div>',
             unsafe_allow_html=True,
         )
@@ -1398,20 +1613,22 @@ def render_dashboard():
         # Step 2
         x_options = [c for c in driver_candidates if c != y_selected]
         if "dash_x" in st.session_state:
-            st.session_state.dash_x = [c for c in st.session_state.dash_x if c in x_options]
+            st.session_state.dash_x = [
+                c for c in st.session_state.dash_x if c in x_options
+            ]
         n_x = len(x_options)
         if n_x > 30:
             x_hint = f'<div class="gbk-input-warning">Review recommended: {n_x} numeric columns were detected. For cleaner output, select the core driver questions instead of every numeric field.</div>'
         else:
-            x_hint = f'<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">{n_x} numeric variable{"s" if n_x!=1 else ""} available.</div>'
+            x_hint = f'<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">{n_x} numeric variable{"s" if n_x != 1 else ""} available.</div>'
 
         st.markdown(
             f'<div class="gbk-panel"><div class="gbk-panel-title">Step 2 · Choose the possible drivers</div>'
             f'<div class="gbk-note"><b>Predictor variables</b> are the possible reasons behind the outcome. These are the survey questions, ratings, or metrics you want to compare as drivers. '
-            f'Choose variables the client can understand and potentially act on. Leave empty to use all detected numeric predictor columns.'
+            f"Choose variables the client can understand and potentially act on. Leave empty to use all detected numeric predictor columns."
             f'<div class="gbk-mini-note">Click the field below and type a keyword to search long variable lists before choosing predictors.</div></div>'
-            f'{x_hint}</div>',
-            unsafe_allow_html=True
+            f"{x_hint}</div>",
+            unsafe_allow_html=True,
         )
         x_vars = st.multiselect(
             "Choose predictor variables",
@@ -1431,7 +1648,7 @@ def render_dashboard():
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Compare groups (optional)</div>'
             '<div class="gbk-note"><b>Subgroup analysis</b> runs the same driver analysis separately inside each group, such as brand, age range, region, market, or customer segment. '
-            'Use it when you need to know whether different audiences have different drivers. Skip it for one overall ranking.'
+            "Use it when you need to know whether different audiences have different drivers. Skip it for one overall ranking."
             '<div class="gbk-mini-note">If you turn this on, click the field and type a keyword to search group variables.</div></div></div>',
             unsafe_allow_html=True,
         )
@@ -1443,7 +1660,9 @@ def render_dashboard():
                     "Choose the group to compare",
                     compare_options,
                     index=None,
-                    format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)",
+                    format_func=lambda c: (
+                        f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} groups)"
+                    ),
                     label_visibility="collapsed",
                     key="dash_sg_search",
                     placeholder="Search subgroup variables...",
@@ -1452,22 +1671,29 @@ def render_dashboard():
                 )
                 sg_var = sg_raw
             else:
-                st.markdown('<div class="gbk-note">No suitable group columns were detected.</div>', unsafe_allow_html=True)
+                st.markdown(
+                    '<div class="gbk-note">No suitable group columns were detected.</div>',
+                    unsafe_allow_html=True,
+                )
         st.markdown("<br>", unsafe_allow_html=True)
 
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Control variables</div>'
             '<div class="gbk-note">Add covariates that should stay in the model but should not be ranked as drivers. '
-            'Use this when the reference analysis adjusts for brand, market, segment, or another grouping variable.</div></div>',
+            "Use this when the reference analysis adjusts for brand, market, segment, or another grouping variable.</div></div>",
             unsafe_allow_html=True,
         )
         excluded_for_controls = {y_selected, sg_var, *x_vars}
-        control_options = [c for c in control_candidates if c not in excluded_for_controls]
+        control_options = [
+            c for c in control_candidates if c not in excluded_for_controls
+        ]
         control_vars = st.multiselect(
             "Choose control variables",
             control_options,
             default=[],
-            format_func=lambda c: f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} levels)",
+            format_func=lambda c: (
+                f"{display_name(c)} ({df_raw[c].nunique(dropna=True)} levels)"
+            ),
             label_visibility="collapsed",
             key="dash_controls",
             placeholder="Search control variables...",
@@ -1481,10 +1707,10 @@ def render_dashboard():
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Choose methods</div>'
             '<div class="gbk-note">Methods are different lenses for ranking the same predictors. '
-            'A good default is <b>Correlation</b> plus <b>Regression</b> for a fast, easy-to-explain read. '
-            'Add <b>SHAP</b>, <b>Random Forest</b>, or <b>XGBoost</b> when you want an advanced check for patterns that may not be straight lines. '
-            'There is no need to select every method; use a few that fit the decision.</div></div>',
-            unsafe_allow_html=True
+            "A good default is <b>Correlation</b> plus <b>Regression</b> for a fast, easy-to-explain read. "
+            "Add <b>SHAP</b>, <b>Random Forest</b>, or <b>XGBoost</b> when you want an advanced check for patterns that may not be straight lines. "
+            "There is no need to select every method; use a few that fit the decision.</div></div>",
+            unsafe_allow_html=True,
         )
         default_methods = set(DEFAULT_METHODS)
         selected_methods = []
@@ -1507,16 +1733,22 @@ def render_dashboard():
         st.markdown(
             '<div class="gbk-panel"><div class="gbk-panel-title">Optional · Bootstrap confidence intervals</div>'
             '<div class="gbk-note">Bootstrap adds uncertainty bands around the ranking. Leave it off for quick exploration. '
-            'Turn it on when scores are close together or when you want more confidence before sharing a final story. '
-            f'By default, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times and adds bands for the lighter methods: '
-            '<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. '
-            '<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates to keep run times practical.</div></div>',
+            "Turn it on when scores are close together or when you want more confidence before sharing a final story. "
+            f"By default, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times and adds bands for the lighter methods: "
+            "<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. "
+            "<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates to keep run times practical.</div></div>",
             unsafe_allow_html=True,
         )
-        include_bootstrap = st.checkbox("Show uncertainty bands", value=False, key="dash_bootstrap")
+        include_bootstrap = st.checkbox(
+            "Show uncertainty bands", value=False, key="dash_bootstrap"
+        )
         bootstrap_resamples = DEFAULT_BOOTSTRAP_RESAMPLES
-        selected_bootstrap_methods = [method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS]
-        selected_heavy_methods = [method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS]
+        selected_bootstrap_methods = [
+            method for method in selected_methods if method in DEFAULT_BOOTSTRAP_METHODS
+        ]
+        selected_heavy_methods = [
+            method for method in selected_methods if method in HEAVY_BOOTSTRAP_METHODS
+        ]
         if include_bootstrap:
             with st.expander("Bootstrap controls"):
                 bootstrap_resamples = st.number_input(
@@ -1528,13 +1760,25 @@ def render_dashboard():
                     help="More samples make bands smoother but slower. Group comparisons multiply the time by the number of included groups.",
                     key="bootstrap_resamples",
                 )
-            ci_method_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_bootstrap_methods) or "None"
-            point_only_label = ", ".join(METHOD_LABELS.get(method, method) for method in selected_heavy_methods) or "None"
+            ci_method_label = (
+                ", ".join(
+                    METHOD_LABELS.get(method, method)
+                    for method in selected_bootstrap_methods
+                )
+                or "None"
+            )
+            point_only_label = (
+                ", ".join(
+                    METHOD_LABELS.get(method, method)
+                    for method in selected_heavy_methods
+                )
+                or "None"
+            )
             st.markdown(
                 f'<div class="gbk-note" style="margin-top:0.5rem;">'
-                f'<b>Uncertainty bands will be shown for:</b> {ci_method_label}<br>'
-                f'<b>Shown without bands:</b> {point_only_label}'
-                f'</div>',
+                f"<b>Uncertainty bands will be shown for:</b> {ci_method_label}<br>"
+                f"<b>Shown without bands:</b> {point_only_label}"
+                f"</div>",
                 unsafe_allow_html=True,
             )
 
@@ -1548,12 +1792,23 @@ def render_dashboard():
                 x_label += f" + {len(x_vars) - 6} more"
         else:
             x_label = f"All detected predictors ({len(x_options)})"
-        sg_label = f"Compare by {display_name(sg_var)}" if use_sg and sg_var else "Overall only"
-        controls_label = ", ".join(display_name(c) for c in control_vars) if control_vars else "None"
+        sg_label = (
+            f"Compare by {display_name(sg_var)}"
+            if use_sg and sg_var
+            else "Overall only"
+        )
+        controls_label = (
+            ", ".join(display_name(c) for c in control_vars) if control_vars else "None"
+        )
         y_label = display_name(y_selected) if y_selected else "Not selected"
-        method_label = ", ".join(METHOD_LABELS.get(m, m) for m in selected_methods) if selected_methods else "None"
+        method_label = (
+            ", ".join(METHOD_LABELS.get(m, m) for m in selected_methods)
+            if selected_methods
+            else "None"
+        )
         ci_label = "On" if include_bootstrap else "Off"
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="gbk-panel" style="border-color:rgba(232,80,58,0.3);">
           <div class="gbk-panel-title">Review setup before running</div>
           <div class="gbk-mini-note" style="margin:0 0 0.75rem;">This is the analysis the app will run.</div>
@@ -1565,7 +1820,9 @@ def render_dashboard():
             <div><div class="gbk-summary-key">Methods / uncertainty</div><div class="gbk-summary-val">{method_label}<br>Bands: {ci_label}</div></div>
           </div>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
         btn_col1, btn_col2 = st.columns(2)
         with btn_col1:
@@ -1610,7 +1867,9 @@ def render_dashboard():
             )
             active_methods = display_methods or result["methods"]
             render_results_guide(result["target"], active_methods)
-            chart_x_domain = chart_range_control(result["kda_result"], active_methods, "single_chart")
+            chart_x_domain = chart_range_control(
+                result["kda_result"], active_methods, "single_chart"
+            )
             render_interval_chart(
                 result["kda_result"],
                 active_methods,
@@ -1641,14 +1900,18 @@ def render_dashboard():
                 )
                 st.dataframe(result["kda_result"].diagnostics, width="stretch")
         elif result["mode"] == "subgroup":
-            controls_note = ", ".join(display_name(c) for c in result.get("controls", [])) or "None"
+            controls_note = (
+                ", ".join(display_name(c) for c in result.get("controls", [])) or "None"
+            )
             st.markdown(
                 f'<div class="gbk-panel"><div class="gbk-panel-title">Compare by · {_auto_label(result["sg_var"])}</div>'
                 f'<div class="gbk-note">Each section repeats the same outcome and predictor setup within one <b>{_auto_label(result["sg_var"])}</b> group. '
-                f'Use this view to see where recommendations should change by audience, brand, or segment. <b>Controls:</b> {controls_note}.</div></div>',
+                f"Use this view to see where recommendations should change by audience, brand, or segment. <b>Controls:</b> {controls_note}.</div></div>",
                 unsafe_allow_html=True,
             )
-            client_style_table = _client_style_shapley_table(result["subgroup_export_table"])
+            client_style_table = _client_style_shapley_table(
+                result["subgroup_export_table"]
+            )
             if client_style_table is not None:
                 with st.expander("Client-style Shapley / LMG table", expanded=True):
                     st.markdown(
@@ -1665,7 +1928,9 @@ def render_dashboard():
                 help="Use this to simplify all subgroup charts without rerunning the analysis.",
             )
             active_methods = display_methods or result["methods"]
-            render_results_guide(result["target"], active_methods, subgroup_label=result["sg_var"])
+            render_results_guide(
+                result["target"], active_methods, subgroup_label=result["sg_var"]
+            )
             for warning in result.get("warnings", []):
                 st.warning(warning)
             summary = result.get("subgroup_summary")
@@ -1675,7 +1940,7 @@ def render_dashboard():
                 st.markdown(
                     f'<div class="gbk-panel"><div class="gbk-panel-title">Subgroup run status</div>'
                     f'<div class="gbk-note"><b>{included_n}</b> groups included · <b>{skipped_n}</b> groups skipped. '
-                    f'Skipped groups are excluded from charts and exports because they do not have enough complete rows for the selected outcome and predictor setup.</div></div>',
+                    f"Skipped groups are excluded from charts and exports because they do not have enough complete rows for the selected outcome and predictor setup.</div></div>",
                     unsafe_allow_html=True,
                 )
                 with st.expander("Subgroup status table"):
@@ -1684,17 +1949,25 @@ def render_dashboard():
                         unsafe_allow_html=True,
                     )
                     st.dataframe(summary, width="stretch")
-            chart_x_domain = chart_range_control(result["kda_result"], active_methods, "subgroup_chart")
+            chart_x_domain = chart_range_control(
+                result["kda_result"], active_methods, "subgroup_chart"
+            )
             for item in result["results"]:
                 if item["skipped"]:
-                    reason = item.get("reason") or "Not enough complete rows for the selected analysis."
+                    reason = (
+                        item.get("reason")
+                        or "Not enough complete rows for the selected analysis."
+                    )
                     st.markdown(
                         f'<div class="gbk-warning-card"><b>Skipped {item["group"]}</b><br>'
-                        f'n={int(item["n"]):,}. {reason}</div>',
+                        f"n={int(item['n']):,}. {reason}</div>",
                         unsafe_allow_html=True,
                     )
                 else:
-                    st.markdown(f'<div style="font-size:13px;font-weight:700;color:#E8503A;margin:1rem 0 0.25rem;text-transform:uppercase;letter-spacing:1.5px;">{_auto_label(result["sg_var"])}: {item["group"]} · n={item["n"]:,}</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="font-size:13px;font-weight:700;color:#E8503A;margin:1rem 0 0.25rem;text-transform:uppercase;letter-spacing:1.5px;">{_auto_label(result["sg_var"])}: {item["group"]} · n={item["n"]:,}</div>',
+                        unsafe_allow_html=True,
+                    )
                     render_interval_chart(
                         item["kda_result"],
                         active_methods,
@@ -1734,16 +2007,20 @@ def render_dashboard():
         st.dataframe(df_raw.head(), width="stretch")
 
     with st.expander("Data preparation details"):
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="gbk-note">
           These automatic checks keep obvious ID, date, lookup, and unusable columns out of the analysis-ready set.<br><br>
-          <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta['excluded_cols'])}<br><br>
-          <b>Dropped because of high missing data:</b><br>{pill_tags(meta['drop_missing_cols'])}<br><br>
-          <b>Suggested subgroup columns:</b><br>{pill_tags(meta['subgroup_candidates'])}<br><br>
-          <b>Suggested control columns:</b><br>{pill_tags(meta.get('control_candidates', []))}<br><br>
-          <b>Dropped because all values were the same:</b><br>{pill_tags(meta['constant_cols'])}
+          <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta["excluded_cols"])}<br><br>
+          <b>Dropped because of high missing data:</b><br>{pill_tags(meta["drop_missing_cols"])}<br><br>
+          <b>Suggested subgroup columns:</b><br>{pill_tags(meta["subgroup_candidates"])}<br><br>
+          <b>Suggested control columns:</b><br>{pill_tags(meta.get("control_candidates", []))}<br><br>
+          <b>Dropped because all values were the same:</b><br>{pill_tags(meta["constant_cols"])}
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
+
 
 if __name__ == "__main__":
     render_dashboard()
