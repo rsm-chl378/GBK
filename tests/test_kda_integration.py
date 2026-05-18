@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from kda_backend import run_kda
+from kda_backend import ALL_METHODS, run_kda
 from GBK_app import (
     DEFAULT_BOOTSTRAP_METHODS,
     DEFAULT_METHODS,
@@ -564,6 +564,8 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         self.assertNotIn("#FFFFFF", {color.upper() for color in colors})
 
     def test_coa_is_available_in_method_ui_metadata(self):
+        self.assertIn("coa", ALL_METHODS)
+        self.assertLess(ALL_METHODS.index("coa"), ALL_METHODS.index("random_forest"))
         self.assertEqual(METHOD_LABELS["coa"], "COA")
         self.assertIn("coa", METHOD_COLORS)
         self.assertNotIn(METHOD_COLORS["coa"].upper(), {"#FFFFFF", "#000000"})

@@ -1727,6 +1727,7 @@ def render_dashboard():
             '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Choose methods</div>'
             '<div class="gbk-note">Methods are different lenses for ranking the same predictors. '
             "A good default is <b>Correlation</b> plus <b>Regression</b> for a fast, easy-to-explain read. "
+            "Add <b>COA</b> when you want another quick association-based check. "
             "Add <b>SHAP</b>, <b>Random Forest</b>, or <b>XGBoost</b> when you want an advanced check for patterns that may not be straight lines. "
             "There is no need to select every method; use a few that fit the decision.</div></div>",
             unsafe_allow_html=True,
