@@ -34,7 +34,7 @@ methods and machine-learning based importance checks.
 
 ## Analysis Methods
 
-The backend supports eight driver analysis methods:
+The backend supports nine driver analysis methods:
 
 | Method | Purpose |
 | --- | --- |
@@ -43,6 +43,7 @@ The backend supports eight driver analysis methods:
 | Drop-one | Measures how much model fit weakens when each driver is removed. |
 | Shapley / LMG | Allocates model explanatory power across overlapping predictors. |
 | Johnson Relative Weights | Estimates relative contribution when predictors are correlated. |
+| COA | Fast association-based driver read using share-scaled squared one-way association. |
 | Random Forest | Tree-based importance check for nonlinear relationships. |
 | XGBoost | Gradient-boosted model importance for predictive driver review. |
 | SHAP | Mean absolute SHAP values from an XGBoost model for advanced importance ranking. |
