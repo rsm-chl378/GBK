@@ -1239,6 +1239,17 @@ def _importance_export_table(kda_result):
     return table.reset_index(drop=True)
 
 
+def _display_table(table):
+    display_table = table.copy()
+    if (
+        isinstance(display_table.index, pd.RangeIndex)
+        and display_table.index.start == 0
+        and display_table.index.step == 1
+    ):
+        display_table.index = pd.RangeIndex(1, len(display_table) + 1)
+    return display_table
+
+
 def _subgroup_summary_table(kda_result):
     if kda_result.subgroup_summary is None:
         return pd.DataFrame(columns=["subgroup_level", "rows_used", "status", "reason"])
@@ -1885,20 +1896,26 @@ def render_dashboard():
                     '<div class="gbk-mini-note">Use this table for QA, appendices, or deeper method review. The chart above is the simpler consultant view.</div>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(result["export_table"], width="stretch")
+                st.dataframe(_display_table(result["export_table"]), width="stretch")
             with st.expander("Final ranking summary"):
                 render_detail_table(result["driver_scores"])
                 st.markdown(
                     '<div class="gbk-mini-note">This detail table shows the final rank calculations used to order the drivers.</div>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(result["kda_result"].ranking_table, width="stretch")
+                st.dataframe(
+                    _display_table(result["kda_result"].ranking_table),
+                    width="stretch",
+                )
             with st.expander("Technical diagnostics"):
                 st.markdown(
                     '<div class="gbk-mini-note">Use diagnostics for data quality checks, model review, or troubleshooting.</div>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(result["kda_result"].diagnostics, width="stretch")
+                st.dataframe(
+                    _display_table(result["kda_result"].diagnostics),
+                    width="stretch",
+                )
         elif result["mode"] == "subgroup":
             controls_note = (
                 ", ".join(display_name(c) for c in result.get("controls", [])) or "None"
@@ -1918,7 +1935,7 @@ def render_dashboard():
                         '<div class="gbk-mini-note">Use *_sum100 to compare with the client Excel left block, and *_average100 to compare with the right block.</div>',
                         unsafe_allow_html=True,
                     )
-                    st.dataframe(client_style_table, width="stretch")
+                    st.dataframe(_display_table(client_style_table), width="stretch")
             display_methods = st.multiselect(
                 "Methods to show in subgroup charts",
                 result["methods"],
@@ -1948,7 +1965,7 @@ def render_dashboard():
                         '<div class="gbk-mini-note">This table explains which groups were included and why any small groups were skipped.</div>',
                         unsafe_allow_html=True,
                     )
-                    st.dataframe(summary, width="stretch")
+                    st.dataframe(_display_table(summary), width="stretch")
             chart_x_domain = chart_range_control(
                 result["kda_result"], active_methods, "subgroup_chart"
             )
@@ -1978,13 +1995,16 @@ def render_dashboard():
                         '<div class="gbk-mini-note">Detailed scores for this group. Use the chart for the quick read and the table for appendix or QA detail.</div>',
                         unsafe_allow_html=True,
                     )
-                    st.dataframe(item["export_table"], width="stretch")
+                    st.dataframe(_display_table(item["export_table"]), width="stretch")
             with st.expander("Downloadable subgroup scores"):
                 st.markdown(
                     '<div class="gbk-mini-note">This combined table stacks all included group-level rankings into one export.</div>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(result["subgroup_export_table"], width="stretch")
+                st.dataframe(
+                    _display_table(result["subgroup_export_table"]),
+                    width="stretch",
+                )
                 st.download_button(
                     "Download subgroup score table CSV",
                     result["subgroup_export_table"].to_csv(index=False).encode("utf-8"),
@@ -1997,14 +2017,17 @@ def render_dashboard():
                     '<div class="gbk-mini-note">Use this as the overall reference ranking alongside the separate subgroup views.</div>',
                     unsafe_allow_html=True,
                 )
-                st.dataframe(result["kda_result"].ranking_table, width="stretch")
+                st.dataframe(
+                    _display_table(result["kda_result"].ranking_table),
+                    width="stretch",
+                )
 
     with st.expander("Raw data preview"):
         st.markdown(
             '<div class="gbk-mini-note">First five rows from the uploaded file.</div>',
             unsafe_allow_html=True,
         )
-        st.dataframe(df_raw.head(), width="stretch")
+        st.dataframe(_display_table(df_raw.head()), width="stretch")
 
     with st.expander("Data preparation details"):
         st.markdown(
