@@ -247,6 +247,32 @@ def johnson(data: pd.DataFrame, y_var: str, x_vars: list[str], controls: list[st
     return MethodResult(scores, {"model_type": "Johnson"})
 
 
+def coa(
+    data: pd.DataFrame,
+    y_var: str,
+    x_vars: list[str],
+    controls: list[str],
+    **_,
+) -> MethodResult:
+    all_predictors = [*x_vars, *controls]
+    x_encoded, mapping = encode_predictors(data, all_predictors)
+    y, _ = encode_outcome(data[y_var], "continuous")
+    y_std = StandardScaler().fit_transform(y.reshape(-1, 1)).ravel()
+
+    encoded_scores = {}
+    for col in x_encoded.columns:
+        x = x_encoded[col].to_numpy(dtype=float).reshape(-1, 1)
+        if np.nanstd(x) == 0 or np.nanstd(y_std) == 0:
+            encoded_scores[col] = np.nan
+            continue
+        x_std = StandardScaler().fit_transform(x).ravel()
+        corr = np.corrcoef(x_std, y_std)[0, 1]
+        encoded_scores[col] = corr**2 if np.isfinite(corr) else np.nan
+
+    scores = share_scale(aggregate_encoded_scores(pd.Series(encoded_scores, dtype=float), x_vars, mapping))
+    return MethodResult(scores, {"model_type": "COA", "score_type": "squared one-way association"})
+
+
 def _tree_model(method: str, y_type: str, params: dict):
     if y_type == "continuous":
         if method == "random_forest":
@@ -374,6 +400,7 @@ METHOD_REGISTRY = {
     "drop_one": drop_one,
     "shapley_lmg": shapley_lmg,
     "johnson": johnson,
+    "coa": coa,
     "random_forest": random_forest,
     "xgboost": xgboost,
     "shap": shap_values,

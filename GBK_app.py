@@ -456,16 +456,17 @@ GBK_CHART_TEXT = "#E9EEF2"
 GBK_CHART_MUTED_TEXT = "#C7D8E4"
 GBK_CHART_GRID = "#5E7486"
 DEFAULT_METHODS = ("correlation", "regression")
-DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson")
+DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson", "coa")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
 DEFAULT_BOOTSTRAP_RESAMPLES = 40
-SHARE_SCALE_METHODS = {"shapley_lmg", "johnson", "random_forest", "xgboost", "shap"}
+SHARE_SCALE_METHODS = {"shapley_lmg", "johnson", "coa", "random_forest", "xgboost", "shap"}
 METHOD_COLORS = {
     "correlation": "#F76362",
     "regression": "#C7D8E4",
     "drop_one": "#3B4954",
     "shapley_lmg": "#D76BA6",
     "johnson": "#2FA872",
+    "coa": "#E58C3A",
     "random_forest": "#8B6BD6",
     "xgboost": "#F0B35A",
     "shap": "#2CA6A4",
@@ -477,6 +478,7 @@ METHOD_LABELS = {
     "drop_one": "Drop-one",
     "shapley_lmg": "Shapley / LMG",
     "johnson": "Johnson Relative Weights",
+    "coa": "COA",
     "random_forest": "Random Forest",
     "xgboost": "XGBoost",
     "shap": "SHAP",
@@ -536,6 +538,12 @@ METHOD_INFO = {
         "recommended": False,
         "desc": "Another good option when predictors are correlated. It estimates each predictor's relative share of the model's explanatory power.",
         "note": "Johnson relative weight.",
+    },
+    "coa": {
+        "title": "COA",
+        "recommended": False,
+        "desc": "Fast association-based driver read inspired by Sawtooth's COA note. It ranks each driver by squared one-way association with the outcome, then share-scales the result.",
+        "note": "COA share of squared one-way association.",
     },
     "xgboost": {
         "title": "XGBoost Importance",
@@ -1746,7 +1754,7 @@ def render_dashboard():
             '<div class="gbk-note">Bootstrap adds uncertainty bands around the ranking. Leave it off for quick exploration. '
             "Turn it on when scores are close together or when you want more confidence before sharing a final story. "
             f"By default, the app resamples the data {DEFAULT_BOOTSTRAP_RESAMPLES} times and adds bands for the lighter methods: "
-            "<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, and <b>Johnson Relative Weights</b>. "
+            "<b>Correlation</b>, <b>Regression</b>, <b>Shapley / LMG</b>, <b>Johnson Relative Weights</b>, and <b>COA</b>. "
             "<b>Random Forest</b>, <b>XGBoost</b>, and <b>SHAP</b> still appear as point estimates to keep run times practical.</div></div>",
             unsafe_allow_html=True,
         )

@@ -9,6 +9,7 @@ ALL_METHODS = [
     "drop_one",
     "shapley_lmg",
     "johnson",
+    "coa",
     "random_forest",
     "xgboost",
     "shap",
@@ -50,6 +51,9 @@ def method_applicability(method: str, y_type: str) -> Applicability:
 
     if method == "johnson":
         return Applicability(True, "custom Johnson relative weights using numeric outcome coding")
+
+    if method == "coa":
+        return Applicability(True, "COA one-way association strength using numeric outcome coding")
 
     if method == "random_forest":
         return Applicability(

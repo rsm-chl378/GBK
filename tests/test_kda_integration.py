@@ -12,6 +12,7 @@ from GBK_app import (
     DEFAULT_METHODS,
     HEAVY_BOOTSTRAP_METHODS,
     METHOD_COLORS,
+    METHOD_LABELS,
     _driver_axis_sort,
     build_driver_interval_chart,
     build_interactive_chart_data,
@@ -552,7 +553,7 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         self.assertEqual(DEFAULT_METHODS, ("correlation", "regression"))
 
     def test_default_bootstrap_methods_exclude_tree_and_shap_methods(self):
-        self.assertEqual(DEFAULT_BOOTSTRAP_METHODS, ("correlation", "regression", "shapley_lmg", "johnson"))
+        self.assertEqual(DEFAULT_BOOTSTRAP_METHODS, ("correlation", "regression", "shapley_lmg", "johnson", "coa"))
         self.assertEqual(HEAVY_BOOTSTRAP_METHODS, ("random_forest", "xgboost", "shap"))
         self.assertTrue(set(DEFAULT_BOOTSTRAP_METHODS).isdisjoint(HEAVY_BOOTSTRAP_METHODS))
 
@@ -561,6 +562,11 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
         self.assertEqual(len(colors), len(set(colors)))
         self.assertNotIn("#FFFFFF", {color.upper() for color in colors})
+
+    def test_coa_is_available_in_method_ui_metadata(self):
+        self.assertEqual(METHOD_LABELS["coa"], "COA")
+        self.assertIn("coa", METHOD_COLORS)
+        self.assertNotIn(METHOD_COLORS["coa"].upper(), {"#FFFFFF", "#000000"})
 
     def test_binary_regression_uses_gbk_standardized_ols_coefficients(self):
         rng = np.random.default_rng(464)
@@ -598,6 +604,51 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
         self.assertAlmostEqual(result.importance_table["shapley_lmg"].sum(), 1.0, places=10)
         self.assertAlmostEqual(result.importance_table["johnson"].sum(), 1.0, places=10)
+
+    def test_coa_scores_are_share_scaled_and_rank_true_driver_first(self):
+        rng = np.random.default_rng(473)
+        n = 90
+        x1 = rng.normal(size=n)
+        x2 = rng.normal(size=n)
+        x3 = rng.normal(size=n)
+        y = 1.8 * x1 + 0.4 * x2 + rng.normal(scale=0.25, size=n)
+        df = pd.DataFrame({"y": y, "x1": x1, "x2": x2, "x3": x3})
+
+        result = run_kda(df, "y", ["x1", "x2", "x3"], ["coa"])
+
+        table = result.importance_table.set_index("driver")
+        self.assertAlmostEqual(table["coa"].sum(), 1.0, places=10)
+        self.assertEqual(table["coa"].idxmax(), "x1")
+        self.assertEqual(result.method_metadata["coa"]["model_type"], "COA")
+
+    def test_run_analysis_bootstraps_coa_as_lightweight_method(self):
+        rng = np.random.default_rng(474)
+        n = 70
+        df_num = pd.DataFrame(
+            {
+                "consideration": rng.normal(size=n),
+                "trust": rng.normal(size=n),
+                "value": rng.normal(size=n),
+                "style": rng.normal(size=n),
+            }
+        )
+        df_num["consideration"] = 1.4 * df_num["trust"] + rng.normal(scale=0.3, size=n)
+        df_raw = df_num.copy()
+
+        result = run_analysis(
+            df_num,
+            df_raw,
+            target="consideration",
+            x_vars=["trust", "value", "style"],
+            sg_var=None,
+            methods=["coa"],
+            include_bootstrap=True,
+            bootstrap_resamples=20,
+        )
+
+        self.assertEqual(result["bootstrap_methods"], ["coa"])
+        self.assertIn("coa_ci_lower", result["export_table"].columns)
+        self.assertIn("coa_ci_upper", result["export_table"].columns)
 
     def test_run_kda_can_force_likert_outcome_to_continuous(self):
         rng = np.random.default_rng(470)
