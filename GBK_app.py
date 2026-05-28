@@ -499,6 +499,7 @@ DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson", "coa")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
 DEFAULT_BOOTSTRAP_RESAMPLES = 200
+RESULT_SCHEMA_VERSION = 2
 SLOW_RUN_METHODS = {"shapley_lmg", *HEAVY_BOOTSTRAP_METHODS}
 SHARE_SCALE_METHODS = {"shapley_lmg", "johnson", "coa", "random_forest", "xgboost", "shap"}
 METHOD_COLORS = {
@@ -955,6 +956,7 @@ def build_interactive_chart_data(importance_table, methods):
             continue
         share_col = f"{method}_share"
         index_col = f"{method}_index"
+        average100_col = f"{method}_average100"
         if share_col in table.columns:
             scores = table[share_col]
             score_scale = "share"
@@ -964,11 +966,12 @@ def build_interactive_chart_data(importance_table, methods):
         else:
             scores = table[method]
             score_scale = "raw"
-        legacy_index = (
-            table[index_col]
-            if index_col in table.columns
-            else pd.Series(np.nan, index=table.index, dtype=float)
-        )
+        if average100_col in table.columns:
+            legacy_index = table[average100_col]
+        elif share_col not in table.columns and index_col in table.columns:
+            legacy_index = table[index_col]
+        else:
+            legacy_index = pd.Series(np.nan, index=table.index, dtype=float)
         lower = pd.Series(np.nan, index=table.index, dtype=float)
         upper = pd.Series(np.nan, index=table.index, dtype=float)
         if (
@@ -1473,6 +1476,7 @@ def _importance_to_series(importance_table):
                 (
                     "_index",
                     "_share",
+                    "_average100",
                     "_sum100",
                     "_rank",
                     "_warning",
@@ -1583,9 +1587,14 @@ def _combined_subgroup_export_table(kda_result, subgroup_var):
 
 
 def _client_style_shapley_table(subgroup_export_table):
-    required = {"subgroup_level", "driver", "shapley_lmg_sum100", "shapley_lmg_index"}
     if subgroup_export_table is None or subgroup_export_table.empty:
         return None
+    average100_col = (
+        "shapley_lmg_average100"
+        if "shapley_lmg_average100" in subgroup_export_table.columns
+        else "shapley_lmg_index"
+    )
+    required = {"subgroup_level", "driver", "shapley_lmg_sum100", average100_col}
     if not required.issubset(set(subgroup_export_table.columns)):
         return None
 
@@ -1611,7 +1620,7 @@ def _client_style_shapley_table(subgroup_export_table):
             level_table.reindex(drivers)["shapley_lmg_sum100"].round(1).to_numpy()
         )
         out[f"{level}_average100"] = (
-            level_table.reindex(drivers)["shapley_lmg_index"].round(1).to_numpy()
+            level_table.reindex(drivers)[average100_col].round(1).to_numpy()
         )
     return out
 
@@ -1705,6 +1714,7 @@ def run_analysis(
     export_table = _importance_export_table(kda_result)
     if not sg_var:
         return {
+            "schema_version": RESULT_SCHEMA_VERSION,
             "mode": "single",
             "target": target,
             "methods": methods,
@@ -1762,6 +1772,7 @@ def run_analysis(
                 }
             )
     return {
+        "schema_version": RESULT_SCHEMA_VERSION,
         "mode": "subgroup",
         "target": target,
         "methods": methods,
@@ -2231,6 +2242,9 @@ def render_dashboard():
             st.session_state.analysis_result = result
 
     result = st.session_state.analysis_result
+    if result and result.get("schema_version") != RESULT_SCHEMA_VERSION:
+        st.session_state.analysis_result = None
+        result = None
 
     if result:
         if "error" in result:
@@ -2319,7 +2333,7 @@ def render_dashboard():
             if client_style_table is not None:
                 with st.expander("Client-style Shapley / LMG table", expanded=True):
                     st.markdown(
-                        '<div class="gbk-mini-note">Use *_sum100 to compare with the client Excel left block, and *_average100 to compare with the right block.</div>',
+                        '<div class="gbk-mini-note">Use *_sum100 or *_index for the client Excel left block, and *_average100 for the right block.</div>',
                         unsafe_allow_html=True,
                     )
                     st.dataframe(_display_table(client_style_table), width="stretch")
