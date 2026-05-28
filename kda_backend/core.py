@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 import warnings as py_warnings
 
 import numpy as np
@@ -14,6 +15,36 @@ from .schemas import KDAResult, MethodResult
 
 MIN_ROWS = 10
 VALID_Y_TYPES = {"continuous", "binary", "ordered", "nominal", "unknown"}
+ProgressCallback = Callable[[float, str], None]
+
+METHOD_PROGRESS_LABELS = {
+    "correlation": "Correlation",
+    "regression": "Regression",
+    "drop_one": "Drop-one",
+    "shapley_lmg": "Shapley / LMG",
+    "johnson": "Johnson Relative Weights",
+    "coa": "COA",
+    "random_forest": "Random Forest",
+    "xgboost": "XGBoost",
+    "shap": "SHAP",
+}
+SLOW_PROGRESS_METHODS = {"shapley_lmg", "random_forest", "xgboost", "shap"}
+
+
+def _method_label(method: str) -> str:
+    return METHOD_PROGRESS_LABELS.get(method, method.replace("_", " ").title())
+
+
+def _emit_progress(
+    progress_callback: ProgressCallback | None, progress: float, message: str
+) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(max(0.0, min(1.0, float(progress))), message)
+
+
+def _scale_progress(start: float, end: float, fraction: float) -> float:
+    return start + ((end - start) * max(0.0, min(1.0, float(fraction))))
 
 
 def _minimum_required_rows(x_vars: list[str], controls: list[str]) -> int:
@@ -148,6 +179,9 @@ def _bootstrap_intervals(
     method_params: dict,
     bootstrap_methods: list[str] | None,
     bootstrap_params: dict | None,
+    progress_callback: ProgressCallback | None = None,
+    progress_start: float = 0.0,
+    progress_end: float = 1.0,
 ) -> tuple[dict[str, tuple[pd.Series, pd.Series]], list[str]]:
     if not bootstrap_methods:
         return {}, []
@@ -168,22 +202,44 @@ def _bootstrap_intervals(
     intervals: dict[str, tuple[pd.Series, pd.Series]] = {}
     warnings: list[str] = []
     selected = set(methods)
-    for method in bootstrap_methods:
+    total_bootstrap_methods = len(bootstrap_methods)
+    for method_index, method in enumerate(bootstrap_methods, start=1):
+        label = _method_label(method)
+        method_start = _scale_progress(
+            progress_start, progress_end, (method_index - 1) / total_bootstrap_methods
+        )
+        method_end = _scale_progress(
+            progress_start, progress_end, method_index / total_bootstrap_methods
+        )
+        _emit_progress(
+            progress_callback,
+            method_start,
+            f"Building bootstrap bands for {label} ({method_index}/{total_bootstrap_methods})...",
+        )
         if method not in selected:
             warnings.append(f"{method} bootstrap skipped: method was not selected for the main analysis.")
+            _emit_progress(progress_callback, method_end, f"Skipped bootstrap bands for {label}.")
             continue
 
         applicability = method_applicability(method, y_type)
         if not applicability.applicable:
             warnings.append(f"{method} bootstrap skipped: {applicability.warning or 'method is not applicable.'}")
+            _emit_progress(progress_callback, method_end, f"Skipped bootstrap bands for {label}.")
             continue
 
         scores_by_driver = {driver: [] for driver in x_vars}
-        for _ in range(n_resamples):
+        update_every = max(1, n_resamples // 20)
+        for sample_num in range(1, n_resamples + 1):
             sample_idx = rng.integers(0, len(model_data), size=len(model_data))
             sample = model_data.iloc[sample_idx].reset_index(drop=True)
             sample_complete = complete_cases(sample, y_var, x_vars, controls)
             if len(sample_complete) < min_rows:
+                if sample_num % update_every == 0 or sample_num == n_resamples:
+                    _emit_progress(
+                        progress_callback,
+                        _scale_progress(method_start, method_end, sample_num / n_resamples),
+                        f"Bootstrap {label}: {sample_num:,}/{n_resamples:,} resamples...",
+                    )
                 continue
             try:
                 with py_warnings.catch_warnings():
@@ -197,12 +253,24 @@ def _bootstrap_intervals(
                         params=method_params.get(method, {}),
                     )
             except Exception:
+                if sample_num % update_every == 0 or sample_num == n_resamples:
+                    _emit_progress(
+                        progress_callback,
+                        _scale_progress(method_start, method_end, sample_num / n_resamples),
+                        f"Bootstrap {label}: {sample_num:,}/{n_resamples:,} resamples...",
+                    )
                 continue
 
             sample_scores = result.scores.reindex(x_vars)
             for driver, value in sample_scores.items():
                 if np.isfinite(value):
                     scores_by_driver[driver].append(float(value))
+            if sample_num % update_every == 0 or sample_num == n_resamples:
+                _emit_progress(
+                    progress_callback,
+                    _scale_progress(method_start, method_end, sample_num / n_resamples),
+                    f"Bootstrap {label}: {sample_num:,}/{n_resamples:,} resamples...",
+                )
 
         lower = pd.Series(np.nan, index=x_vars, dtype=float)
         upper = pd.Series(np.nan, index=x_vars, dtype=float)
@@ -225,6 +293,7 @@ def _bootstrap_intervals(
             warnings.append(
                 f"{method} bootstrap skipped: insufficient valid bootstrap samples after {n_resamples} resamples."
             )
+        _emit_progress(progress_callback, method_end, f"Finished bootstrap bands for {label}.")
 
     return intervals, warnings
 
@@ -240,11 +309,13 @@ def run_kda(
     bootstrap_methods: list[str] | None = None,
     bootstrap_params: dict | None = None,
     y_type_override: str | None = None,
+    progress_callback: ProgressCallback | None = None,
     _run_subgroups: bool = True,
 ) -> KDAResult:
     controls = controls or []
     method_params = method_params or {}
     _validate_inputs(data, y_var, x_vars, methods, controls, subgroup, y_type_override)
+    _emit_progress(progress_callback, 0.02, "Preparing data and checking selected methods...")
 
     subgroup_results: dict[str, KDAResult] | None = None
     subgroup_summary: pd.DataFrame | None = None
@@ -253,7 +324,21 @@ def run_kda(
         subgroup_results = {}
         subgroup_rows = []
         min_required_rows = _minimum_required_rows(x_vars, controls)
-        for level, group in data.dropna(subset=[subgroup]).groupby(subgroup, sort=True):
+        subgroup_groups = list(data.dropna(subset=[subgroup]).groupby(subgroup, sort=True))
+        total_groups = max(1, len(subgroup_groups))
+        _emit_progress(
+            progress_callback,
+            0.04,
+            f"Preparing {len(subgroup_groups)} subgroup run{'s' if len(subgroup_groups) != 1 else ''}...",
+        )
+        for group_index, (level, group) in enumerate(subgroup_groups, start=1):
+            group_start = _scale_progress(0.05, 0.40, (group_index - 1) / total_groups)
+            group_end = _scale_progress(0.05, 0.40, group_index / total_groups)
+            _emit_progress(
+                progress_callback,
+                group_start,
+                f"Running subgroup {level} ({group_index}/{len(subgroup_groups)})...",
+            )
             complete = complete_cases(group, y_var, x_vars, controls)
             if len(complete) < min_required_rows:
                 reason = f"only {len(complete)} complete rows; at least {min_required_rows} are required."
@@ -267,8 +352,20 @@ def run_kda(
                         "reason": reason,
                     }
                 )
+                _emit_progress(
+                    progress_callback,
+                    group_end,
+                    f"Skipped subgroup {level}: insufficient complete rows.",
+                )
                 continue
             try:
+                def subgroup_progress(progress: float, message: str) -> None:
+                    _emit_progress(
+                        progress_callback,
+                        _scale_progress(group_start, group_end, progress),
+                        f"Subgroup {level}: {message}",
+                    )
+
                 subgroup_results[str(level)] = run_kda(
                     group,
                     y_var,
@@ -280,6 +377,7 @@ def run_kda(
                     bootstrap_methods=bootstrap_methods,
                     bootstrap_params=bootstrap_params,
                     y_type_override=y_type_override,
+                    progress_callback=subgroup_progress,
                     _run_subgroups=False,
                 )
             except Exception as exc:
@@ -294,6 +392,7 @@ def run_kda(
                         "reason": reason,
                     }
                 )
+                _emit_progress(progress_callback, group_end, f"Skipped subgroup {level}: {reason}")
                 continue
             subgroup_rows.append(
                 {
@@ -304,11 +403,19 @@ def run_kda(
                     "reason": "",
                 }
             )
+            _emit_progress(progress_callback, group_end, f"Finished subgroup {level}.")
         subgroup_summary = pd.DataFrame(
             subgroup_rows,
             columns=["subgroup_variable", "subgroup_level", "rows_used", "status", "reason"],
         )
 
+    has_subgroup_progress = bool(subgroup and _run_subgroups)
+    data_progress = 0.42 if has_subgroup_progress else 0.06
+    method_start = 0.45 if has_subgroup_progress else 0.10
+    method_end = 0.72 if bootstrap_methods else 0.90
+    bootstrap_end = 0.95
+
+    _emit_progress(progress_callback, data_progress, "Preparing complete cases for the main analysis...")
     model_data = complete_cases(data, y_var, x_vars, controls)
     min_required_rows = _minimum_required_rows(x_vars, controls)
     if len(model_data) < min_required_rows:
@@ -322,7 +429,17 @@ def run_kda(
     method_metadata: dict[str, dict] = {}
     method_warnings: dict[str, list[str]] = {}
 
-    for method in methods:
+    total_methods = max(1, len(methods))
+    for method_index, method in enumerate(methods, start=1):
+        label = _method_label(method)
+        step_start = _scale_progress(method_start, method_end, (method_index - 1) / total_methods)
+        step_end = _scale_progress(method_start, method_end, method_index / total_methods)
+        slow_note = " This can take longer." if method in SLOW_PROGRESS_METHODS else ""
+        _emit_progress(
+            progress_callback,
+            step_start,
+            f"Running {label} ({method_index}/{len(methods)})...{slow_note}",
+        )
         applicability = method_applicability(method, y_type)
         if not applicability.applicable:
             result = _nan_method(method, x_vars, applicability.warning or f"{method} is not applicable.")
@@ -346,6 +463,7 @@ def run_kda(
         method_metadata[method] = metadata
         method_warnings[method] = result.warnings
         warnings.extend([f"{method}: {warning}" for warning in result.warnings])
+        _emit_progress(progress_callback, step_end, f"Finished {label}.")
 
     method_intervals, bootstrap_warnings = _bootstrap_intervals(
         model_data=model_data,
@@ -358,9 +476,13 @@ def run_kda(
         method_params=method_params,
         bootstrap_methods=bootstrap_methods,
         bootstrap_params=bootstrap_params,
+        progress_callback=progress_callback,
+        progress_start=method_end,
+        progress_end=bootstrap_end,
     )
     warnings.extend(bootstrap_warnings)
 
+    _emit_progress(progress_callback, 0.97, "Assembling rankings, diagnostics, and charts...")
     importance, ranking = _assemble_tables(x_vars, methods, method_scores, method_warnings, method_intervals)
     diagnostics = _diagnostics(
         rows_input=len(data),
@@ -374,6 +496,7 @@ def run_kda(
         method_metadata=method_metadata,
     )
     chart = driver_bar_chart(ranking)
+    _emit_progress(progress_callback, 1.0, "Analysis complete.")
     return KDAResult(
         importance_table=importance,
         ranking_table=ranking,

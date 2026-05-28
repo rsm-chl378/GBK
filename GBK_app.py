@@ -1,3 +1,4 @@
+import html as _html
 import re as _re
 
 import altair as alt
@@ -34,6 +35,7 @@ White      #FFFFFF
 .gbk-label { font-size: 10px; color: rgba(255,255,255,0.70); text-transform: uppercase; letter-spacing: 2.5px; font-weight: 700; margin-bottom: 0.4rem; }
 .gbk-panel { background: #334651; border-radius: 10px; border: 1px solid rgba(199,216,228,0.18); padding: 1.25rem 1.5rem; margin-bottom: 1rem; }
 .gbk-panel-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2.5px; color: rgba(255,255,255,0.62); margin-bottom: 0.75rem; }
+.gbk-step-title { color: #F76362; }
 .gbk-note { font-size: 13px; color: rgba(255,255,255,0.84); line-height: 1.7; }
 .gbk-mini-note { font-size: 12px; color: rgba(255,255,255,0.68); line-height: 1.6; margin-top: 0.45rem; }
 .gbk-stat { font-size: 30px; font-weight: 800; color: #FFFFFF; line-height: 1; }
@@ -64,8 +66,15 @@ White      #FFFFFF
 
 .gbk-tag { display: inline-block; background: rgba(120,159,192,0.20); color: #C7D8E4; font-size: 12px; padding: 2px 9px; border-radius: 4px; margin: 2px; }
 .gbk-method-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(199,216,228,0.18); border-radius: 8px; padding: 10px 14px; margin-top: 8px; }
+.gbk-method-section-title { color: #C7D8E4; font-size: 12px; font-weight: 800; letter-spacing: 1.8px; text-transform: uppercase; margin: 18px 0 8px; }
 .gbk-method-title { font-size: 13px; color: #FFFFFF; font-weight: 700; margin-bottom: 4px; }
 .gbk-method-desc { font-size: 12px; color: rgba(255,255,255,0.80); line-height: 1.55; }
+.gbk-progress-status { color: #C7D8E4; font-size: 14px; font-weight: 700; margin: 0.9rem 0 0.35rem; }
+.gbk-progress-status span { color: #FFFFFF; display: inline-block; min-width: 42px; margin-right: 8px; }
+.gbk-progress-hint { color: rgba(255,255,255,0.68); font-size: 12px; line-height: 1.6; margin-top: 0.35rem; }
+.gbk-chart-method-title { color: #FFFFFF; font-size: 13px; font-weight: 800; margin: 0 0 0.45rem; }
+.gbk-chart-method-note { color: rgba(255,255,255,0.60); font-size: 11px; line-height: 1.45; margin-bottom: 0.6rem; }
+.gbk-method-swatch { width: 11px; height: 11px; border-radius: 50%; margin-top: 0.55rem; box-shadow: 0 0 0 1px rgba(255,255,255,0.24); }
 .gbk-shap-badge { display: inline-block; background: rgba(247,99,98,0.16); border: 1px solid rgba(247,99,98,0.42); color: #F76362; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 1px 7px; border-radius: 4px; margin-left: 8px; vertical-align: middle; }
 .gbk-input-warning { font-size: 11px; color: #F76362; margin-top: 6px; font-weight: 600; }
 .gbk-warning-card { background: rgba(247,99,98,0.10); border: 1px solid rgba(247,99,98,0.35); border-left: 4px solid #F76362; border-radius: 8px; padding: 0.8rem 1rem; margin: 0.6rem 0; color: rgba(255,255,255,0.86); font-size: 13px; line-height: 1.55; }
@@ -147,7 +156,8 @@ div[data-testid="InputInstructions"] {
 }
 
 div[data-testid="stButton"] > button,
-div[data-testid="stFormSubmitButton"] > button {
+div[data-testid="stFormSubmitButton"] > button,
+div[data-testid="stDownloadButton"] > button {
   background: #F76362 !important;
   color: #FFFFFF !important;
   border: none !important;
@@ -159,8 +169,16 @@ div[data-testid="stFormSubmitButton"] > button {
   padding: 0.6rem 1rem !important;
 }
 div[data-testid="stButton"] > button:hover,
-div[data-testid="stFormSubmitButton"] > button:hover {
+div[data-testid="stFormSubmitButton"] > button:hover,
+div[data-testid="stDownloadButton"] > button:hover {
   background: #e55a59 !important;
+}
+div[data-testid="stDownloadButton"] > button {
+  width: 100% !important;
+  min-height: 54px !important;
+  font-size: 14px !important;
+  letter-spacing: 1.5px !important;
+  box-shadow: 0 10px 22px rgba(247,99,98,0.24) !important;
 }
 
 div[data-baseweb="select"] > div,
@@ -304,6 +322,27 @@ div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true
 div[data-testid="stMultiSelect"] div[data-baseweb="select"] [aria-disabled="true"] * {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
+  opacity: 1 !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] {
+  background: #C7D8E4 !important;
+  border: 1px solid #E6F0F7 !important;
+  color: #3B4954 !important;
+  box-shadow: 0 0 0 1px rgba(59,73,84,0.18) !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"],
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] *,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] span,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] button,
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] svg {
+  color: #3B4954 !important;
+  -webkit-text-fill-color: #3B4954 !important;
+  fill: #3B4954 !important;
+  stroke: #3B4954 !important;
+  font-weight: 700 !important;
+}
+div[data-testid="stMultiSelect"] div[data-baseweb="select"] [data-baseweb="tag"] button {
+  background: transparent !important;
   opacity: 1 !important;
 }
 
@@ -458,7 +497,8 @@ GBK_CHART_GRID = "#5E7486"
 DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson", "coa")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
-DEFAULT_BOOTSTRAP_RESAMPLES = 40
+DEFAULT_BOOTSTRAP_RESAMPLES = 200
+SLOW_RUN_METHODS = {"shapley_lmg", *HEAVY_BOOTSTRAP_METHODS}
 SHARE_SCALE_METHODS = {"shapley_lmg", "johnson", "coa", "random_forest", "xgboost", "shap"}
 METHOD_COLORS = {
     "correlation": "#F76362",
@@ -936,7 +976,10 @@ def _driver_axis_sort(chart_df):
 
 def apply_gbk_altair_theme(chart):
     return (
-        chart.properties(background=GBK_CHART_BG)
+        chart.properties(
+            background=GBK_CHART_BG,
+            usermeta={"embedOptions": {"actions": False}},
+        )
         .configure_view(fill=GBK_CHART_BG, stroke=None)
         .configure_axis(
             labelColor=GBK_CHART_MUTED_TEXT,
@@ -994,17 +1037,64 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         x_domain = [min_x - pad, max_x + pad]
     if x_domain_override:
         x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
-    nearest = alt.selection_point(
-        name="method_filter", fields=["method"], bind="legend"
+    driver_bands = pd.DataFrame(
+        {
+            "driver_label": y_sort,
+            "x_min": x_domain[0],
+            "x_max": x_domain[1],
+            "band": [idx % 2 for idx in range(len(y_sort))],
+        }
+    )
+    y_axis = alt.Y(
+        "driver_label:N",
+        sort=y_sort,
+        title="Driver",
+        scale=alt.Scale(paddingOuter=0.20, paddingInner=0.10),
+    )
+    method_offset = alt.YOffset(
+        "method:N",
+        sort=domain,
+        scale=alt.Scale(paddingOuter=0.55, paddingInner=0.18),
+    )
+    bands = (
+        alt.Chart(driver_bands)
+        .mark_rect(opacity=0.20)
+        .encode(
+            y=y_axis,
+            x=alt.X(
+                "x_min:Q",
+                title="Indexed score (average = 100)",
+                scale=alt.Scale(domain=x_domain, zero=False),
+            ),
+            x2="x_max:Q",
+            color=alt.condition(
+                alt.datum.band == 0,
+                alt.value("#3B4F5B"),
+                alt.value("#304651"),
+            ),
+        )
+    )
+    separators = (
+        alt.Chart(driver_bands)
+        .mark_rule(stroke="#5E7486", strokeWidth=1, opacity=0.42)
+        .encode(
+            y=y_axis,
+            x=alt.X(
+                "x_min:Q",
+                title="Indexed score (average = 100)",
+                scale=alt.Scale(domain=x_domain, zero=False),
+            ),
+            x2="x_max:Q",
+        )
     )
     base = alt.Chart(chart_df).encode(
-        y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
+        y=y_axis,
+        yOffset=method_offset,
         color=alt.Color(
             "method:N",
             scale=alt.Scale(domain=domain, range=chart_colors),
-            title="Method",
+            legend=None,
         ),
-        opacity=alt.condition(nearest, alt.value(1), alt.value(0.04)),
         tooltip=[
             alt.Tooltip("driver_label:N", title="Driver"),
             alt.Tooltip("method:N", title="Method"),
@@ -1019,7 +1109,8 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         alt.Chart(ci_df)
         .mark_rule(strokeWidth=2)
         .encode(
-            y=alt.Y("driver_label:N", sort=y_sort, title="Driver"),
+            y=y_axis,
+            yOffset=method_offset,
             x=alt.X(
                 "ci_lower:Q",
                 title="Indexed score (average = 100)",
@@ -1029,9 +1120,9 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             color=alt.Color(
                 "method:N",
                 scale=alt.Scale(domain=domain, range=chart_colors),
-                title="Method",
+                legend=None,
             ),
-            opacity=alt.condition(nearest, alt.value(0.75), alt.value(0.04)),
+            opacity=alt.value(0.78),
             tooltip=[
                 alt.Tooltip("driver_label:N", title="Driver"),
                 alt.Tooltip("method:N", title="Method"),
@@ -1049,23 +1140,70 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
         )
-        .add_params(nearest)
     )
-    chart = (ci + points).properties(
-        height=max(360, 34 * len(y_sort)), width="container"
+    chart = (bands + separators + ci + points).properties(
+        height=max(420, (44 + (12 * min(len(domain), 8))) * len(y_sort)),
+        width="container",
     )
     return apply_gbk_altair_theme(chart)
 
 
-def render_interval_chart(
-    kda_result, methods, title="Driver importance", chart_x_domain=None
-):
-    st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
-    chart = build_interactive_driver_chart(
-        kda_result.importance_table, methods, chart_x_domain
+def _chart_method_key(key_prefix, method):
+    safe_method = _re.sub(r"[^a-zA-Z0-9_]+", "_", str(method))
+    return f"{key_prefix}_show_{safe_method}"
+
+
+def _default_chart_methods(methods):
+    return list(methods)
+
+
+def _ensure_chart_method_state(methods, key_prefix):
+    signature_key = f"{key_prefix}_method_signature"
+    signature = ("all_default_banded_v1", tuple(methods))
+    if st.session_state.get(signature_key) == signature:
+        return
+    default_methods = set(_default_chart_methods(methods))
+    for method in methods:
+        st.session_state[_chart_method_key(key_prefix, method)] = method in default_methods
+    st.session_state[signature_key] = signature
+
+
+def get_active_chart_methods(methods, key_prefix):
+    _ensure_chart_method_state(methods, key_prefix)
+    return [
+        method
+        for method in methods
+        if st.session_state.get(_chart_method_key(key_prefix, method), False)
+    ]
+
+
+def render_chart_method_checkboxes(methods, key_prefix):
+    _ensure_chart_method_state(methods, key_prefix)
+    st.markdown(
+        '<div class="gbk-chart-method-title">Show methods</div>'
+        '<div class="gbk-chart-method-note">All methods are shown by default. Uncheck methods to simplify the view.</div>',
+        unsafe_allow_html=True,
     )
-    if chart is not None:
-        st.altair_chart(chart, width="stretch", theme=None)
+    selected = []
+    for method in methods:
+        swatch_col, checkbox_col = st.columns([0.14, 0.86], gap="small")
+        with swatch_col:
+            color = METHOD_COLORS.get(method, "#789FC0")
+            st.markdown(
+                f'<div class="gbk-method-swatch" style="background:{color};"></div>',
+                unsafe_allow_html=True,
+            )
+        with checkbox_col:
+            checked = st.checkbox(
+                METHOD_LABELS.get(method, method),
+                key=_chart_method_key(key_prefix, method),
+            )
+        if checked:
+            selected.append(method)
+    return selected
+
+
+def render_chart_disclaimer(kda_result, methods):
     ci_methods = [
         method
         for method in methods
@@ -1075,7 +1213,7 @@ def render_interval_chart(
     if ci_methods:
         labels = ", ".join(METHOD_LABELS.get(method, method) for method in ci_methods)
         st.markdown(
-            f'<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Horizontal lines are bootstrap confidence intervals for {labels}. Raw scores remain in the export table.</div>',
+            f'<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Horizontal lines are bootstrap confidence intervals for {labels}; dots and intervals are vertically staggered by method to make overlaps easier to read. Raw scores remain in the export table.</div>',
             unsafe_allow_html=True,
         )
     else:
@@ -1083,6 +1221,51 @@ def render_interval_chart(
             '<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Enable bootstrap before running analysis to add confidence intervals.</div>',
             unsafe_allow_html=True,
         )
+
+
+def render_interval_chart(
+    kda_result, methods, title="Driver importance", chart_x_domain=None
+):
+    st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
+    if not methods:
+        st.markdown(
+            '<div class="gbk-warning-card"><b>No methods selected</b><br>Use the chart method checkboxes to add methods to the chart.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+    chart = build_interactive_driver_chart(
+        kda_result.importance_table, methods, chart_x_domain
+    )
+    if chart is not None:
+        st.altair_chart(chart, width="stretch", theme=None)
+    render_chart_disclaimer(kda_result, methods)
+
+
+def render_controlled_interval_chart(
+    kda_result,
+    methods,
+    key_prefix,
+    title="Driver importance",
+    chart_x_domain=None,
+):
+    st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
+    chart_col, controls_col = st.columns([0.84, 0.16], gap="large")
+    with controls_col:
+        active_methods = render_chart_method_checkboxes(methods, key_prefix)
+    with chart_col:
+        if not active_methods:
+            st.markdown(
+                '<div class="gbk-warning-card"><b>No methods selected</b><br>Use the checkboxes on the right to add methods to the chart.</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            chart = build_interactive_driver_chart(
+                kda_result.importance_table, active_methods, chart_x_domain
+            )
+            if chart is not None:
+                st.altair_chart(chart, width="stretch", theme=None)
+            render_chart_disclaimer(kda_result, active_methods)
+    return active_methods
 
 
 def chart_range_control(kda_result, methods, key_prefix):
@@ -1125,7 +1308,10 @@ def chart_range_control(kda_result, methods, key_prefix):
 
 def render_results_guide(target, methods, subgroup_label=None):
     t = display_name(target)
-    method_text = ", ".join(METHOD_LABELS.get(method, method) for method in methods)
+    method_text = (
+        ", ".join(METHOD_LABELS.get(method, method) for method in methods)
+        or "None selected for the chart"
+    )
     subgroup_note = ""
     if subgroup_label:
         subgroup_note = (
@@ -1138,7 +1324,7 @@ def render_results_guide(target, methods, subgroup_label=None):
         f"Read the ranking from top to bottom. Scores above 100 are stronger than the average driver; scores below 100 are weaker. "
         f"When several methods point to the same top drivers, the story is usually more dependable. "
         f"These results are directional, not proof of cause and effect.</div>"
-        f'<div class="gbk-mini-note"><b>Methods used:</b> {method_text}</div>'
+        f'<div class="gbk-mini-note"><b>Methods shown:</b> {method_text}</div>'
         f"{subgroup_note}</div>",
         unsafe_allow_html=True,
     )
@@ -1258,6 +1444,55 @@ def _display_table(table):
     return display_table
 
 
+def _download_table(table, dependent_variable=None):
+    out = table.copy()
+    if dependent_variable is not None:
+        if "dependent_variable" in out.columns:
+            out = out.drop(columns=["dependent_variable"])
+        out.insert(0, "dependent_variable", display_name(dependent_variable))
+    return out
+
+
+def render_table_download(label, table, file_name, dependent_variable=None):
+    download_table = _download_table(table, dependent_variable)
+    st.download_button(
+        label,
+        download_table.to_csv(index=False).encode("utf-8"),
+        file_name=file_name,
+        mime="text/csv",
+        width="stretch",
+    )
+
+
+def render_uploaded_data_review(df_raw, meta):
+    with st.expander("Raw data preview", expanded=True):
+        st.markdown(
+            '<div class="gbk-mini-note">First five rows from the uploaded file.</div>',
+            unsafe_allow_html=True,
+        )
+        st.dataframe(_display_table(df_raw.head()), width="stretch")
+        render_table_download(
+            "Download Full Raw Data CSV",
+            df_raw,
+            "raw_data.csv",
+        )
+
+    with st.expander("Data preparation results"):
+        st.markdown(
+            f"""
+        <div class="gbk-note">
+          These automatic checks keep obvious ID, date, lookup, and unusable columns out of the analysis-ready set.<br><br>
+          <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta.get("excluded_cols", []))}<br><br>
+          <b>Dropped because of high missing data:</b><br>{pill_tags(meta.get("drop_missing_cols", []))}<br><br>
+          <b>Suggested subgroup columns:</b><br>{pill_tags(meta.get("subgroup_candidates", []))}<br><br>
+          <b>Suggested control columns:</b><br>{pill_tags(meta.get("control_candidates", []))}<br><br>
+          <b>Dropped because all values were the same:</b><br>{pill_tags(meta.get("constant_cols", []))}
+        </div>
+        """,
+            unsafe_allow_html=True,
+        )
+
+
 def _subgroup_summary_table(kda_result):
     if kda_result.subgroup_summary is None:
         return pd.DataFrame(columns=["subgroup_level", "rows_used", "status", "reason"])
@@ -1321,6 +1556,7 @@ def run_analysis(
     include_bootstrap=False,
     bootstrap_resamples=DEFAULT_BOOTSTRAP_RESAMPLES,
     control_vars=None,
+    progress_callback=None,
 ):
     predictors = [
         c
@@ -1385,6 +1621,7 @@ def run_analysis(
             bootstrap_methods=bootstrap_methods,
             bootstrap_params=bootstrap_params,
             y_type_override=y_type_override,
+            progress_callback=progress_callback,
         )
     except Exception as exc:
         return {"error": str(exc)}
@@ -1587,6 +1824,8 @@ def render_dashboard():
     )
 
     st.markdown("<br>", unsafe_allow_html=True)
+    render_uploaded_data_review(df_raw, meta)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     auto_outcome_candidates = [
         c for c in (meta.get("outcome_candidates") or []) if c in df_num.columns
@@ -1608,7 +1847,7 @@ def render_dashboard():
             else "Choose the outcome you want to explain. Click the field below and type a keyword to search."
         )
         st.markdown(
-            '<div class="gbk-panel"><div class="gbk-panel-title">Step 1 · Choose the outcome</div>'
+            '<div class="gbk-panel"><div class="gbk-panel-title gbk-step-title">Step 1 · Choose the outcome</div>'
             '<div class="gbk-note"><b>Outcome variable</b> means the result you want to improve or explain, such as satisfaction, consideration, renewal intent, or NPS. '
             "Pick one result column. Ideally, higher values should mean a better or more desired outcome."
             f'<div class="gbk-mini-note">{outcome_helper}</div></div></div>',
@@ -1642,7 +1881,7 @@ def render_dashboard():
             x_hint = f'<div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;">{n_x} numeric variable{"s" if n_x != 1 else ""} available.</div>'
 
         st.markdown(
-            f'<div class="gbk-panel"><div class="gbk-panel-title">Step 2 · Choose the possible drivers</div>'
+            f'<div class="gbk-panel"><div class="gbk-panel-title gbk-step-title">Step 2 · Choose the possible drivers</div>'
             f'<div class="gbk-note"><b>Predictor variables</b> are the possible reasons behind the outcome. These are the survey questions, ratings, or metrics you want to compare as drivers. '
             f"Choose variables the client can understand and potentially act on. Leave empty to use all detected numeric predictor columns."
             f'<div class="gbk-mini-note">Click the field below and type a keyword to search long variable lists before choosing predictors.</div></div>'
@@ -1665,7 +1904,7 @@ def render_dashboard():
 
         # Step 3
         st.markdown(
-            '<div class="gbk-panel"><div class="gbk-panel-title">Step 3 · Compare groups (optional)</div>'
+            '<div class="gbk-panel"><div class="gbk-panel-title gbk-step-title">Step 3 · Compare groups (optional)</div>'
             '<div class="gbk-note"><b>Subgroup analysis</b> runs the same driver analysis separately inside each group, such as brand, age range, region, market, or customer segment. '
             "Use it when you need to know whether different audiences have different drivers. Skip it for one overall ranking."
             '<div class="gbk-mini-note">If you turn this on, click the field and type a keyword to search group variables.</div></div></div>',
@@ -1724,7 +1963,7 @@ def render_dashboard():
 
         # Step 4 — Method checkboxes with info boxes
         st.markdown(
-            '<div class="gbk-panel"><div class="gbk-panel-title">Step 4 · Choose methods</div>'
+            '<div class="gbk-panel"><div class="gbk-panel-title gbk-step-title">Step 4 · Choose methods</div>'
             '<div class="gbk-note">Methods are different lenses for ranking the same predictors. '
             "A good default is <b>Correlation</b> plus <b>Regression</b> for a fast, easy-to-explain read. "
             "Add <b>COA</b> when you want another quick association-based check. "
@@ -1745,6 +1984,10 @@ def render_dashboard():
                 )
             if checked:
                 selected_methods.append(method_key)
+        st.markdown(
+            '<div class="gbk-method-section-title">Explanation of selected methods</div>',
+            unsafe_allow_html=True,
+        )
         for method_key in selected_methods:
             render_method_info_box(method_key)
 
@@ -1857,18 +2100,59 @@ def render_dashboard():
         if not y_selected:
             st.error("Please choose the outcome you want to explain.")
         else:
-            with st.spinner(f"Running driver analysis with {method_label}..."):
-                result = run_analysis(
-                    df_num,
-                    df_raw,
-                    y_selected,
-                    x_vars or None,
-                    sg_var,
-                    selected_methods,
-                    include_bootstrap=include_bootstrap,
-                    bootstrap_resamples=bootstrap_resamples,
-                    control_vars=control_vars,
+            progress_status = st.empty()
+            progress_bar = st.progress(0)
+            progress_hint = st.empty()
+            slow_methods = [
+                METHOD_LABELS.get(method, method)
+                for method in selected_methods
+                if method in SLOW_RUN_METHODS
+            ]
+            hint_parts = []
+            if slow_methods:
+                hint_parts.append(
+                    f"Longer-running method{'s' if len(slow_methods) != 1 else ''}: "
+                    f"{', '.join(slow_methods)}."
                 )
+            if include_bootstrap:
+                hint_parts.append(
+                    f"Bootstrap bands will run {int(bootstrap_resamples):,} resamples for eligible methods."
+                )
+            if hint_parts:
+                progress_hint.markdown(
+                    f'<div class="gbk-progress-hint">{" ".join(_html.escape(part) for part in hint_parts)}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            last_progress = {"value": 0.0}
+
+            def update_progress(progress, message):
+                progress = min(1.0, max(last_progress["value"], float(progress)))
+                last_progress["value"] = progress
+                pct = int(round(progress * 100))
+                progress_bar.progress(pct)
+                progress_status.markdown(
+                    f'<div class="gbk-progress-status"><span>{pct}%</span>{_html.escape(message)}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            update_progress(0.01, f"Starting driver analysis with {method_label}...")
+            result = run_analysis(
+                df_num,
+                df_raw,
+                y_selected,
+                x_vars or None,
+                sg_var,
+                selected_methods,
+                include_bootstrap=include_bootstrap,
+                bootstrap_resamples=bootstrap_resamples,
+                control_vars=control_vars,
+                progress_callback=update_progress,
+            )
+            if "error" in result:
+                update_progress(1.0, "Analysis stopped. Review the message below.")
+            else:
+                update_progress(1.0, "Analysis complete. Results are ready.")
             st.session_state.analysis_result = result
 
     result = st.session_state.analysis_result
@@ -1877,24 +2161,25 @@ def render_dashboard():
         if "error" in result:
             st.error(result["error"])
         elif result["mode"] == "single":
-            display_methods = st.multiselect(
-                "Methods to show in chart",
-                result["methods"],
-                default=result["methods"],
-                format_func=lambda method: METHOD_LABELS.get(method, method),
-                key="single_chart_methods",
-                help="Use this to simplify the chart view without rerunning the analysis.",
+            active_methods = get_active_chart_methods(
+                result["methods"], "single_chart_methods"
             )
-            active_methods = display_methods or result["methods"]
             render_results_guide(result["target"], active_methods)
             chart_x_domain = chart_range_control(
                 result["kda_result"], active_methods, "single_chart"
             )
-            render_interval_chart(
+            render_controlled_interval_chart(
                 result["kda_result"],
-                active_methods,
+                result["methods"],
+                "single_chart_methods",
                 title="Driver ranking chart",
                 chart_x_domain=chart_x_domain,
+            )
+            render_table_download(
+                "Download Main Results Table CSV",
+                result["export_table"],
+                "driver_main_results.csv",
+                dependent_variable=result["target"],
             )
             render_insights(result["target"], result["driver_scores"])
             render_next_steps(result["target"], result["driver_scores"])
@@ -1906,6 +2191,12 @@ def render_dashboard():
                     unsafe_allow_html=True,
                 )
                 st.dataframe(_display_table(result["export_table"]), width="stretch")
+                render_table_download(
+                    "Download Detailed Score Export CSV",
+                    result["export_table"],
+                    "detailed_score_export.csv",
+                    dependent_variable=result["target"],
+                )
             with st.expander("Final ranking summary"):
                 render_detail_table(result["driver_scores"])
                 st.markdown(
@@ -1916,6 +2207,12 @@ def render_dashboard():
                     _display_table(result["kda_result"].ranking_table),
                     width="stretch",
                 )
+                render_table_download(
+                    "Download Final Ranking Summary CSV",
+                    result["kda_result"].ranking_table,
+                    "final_ranking_summary.csv",
+                    dependent_variable=result["target"],
+                )
             with st.expander("Technical diagnostics"):
                 st.markdown(
                     '<div class="gbk-mini-note">Use diagnostics for data quality checks, model review, or troubleshooting.</div>',
@@ -1924,6 +2221,12 @@ def render_dashboard():
                 st.dataframe(
                     _display_table(result["kda_result"].diagnostics),
                     width="stretch",
+                )
+                render_table_download(
+                    "Download Technical Diagnostics CSV",
+                    result["kda_result"].diagnostics,
+                    "technical_diagnostics.csv",
+                    dependent_variable=result["target"],
                 )
         elif result["mode"] == "subgroup":
             controls_note = (
@@ -1945,17 +2248,27 @@ def render_dashboard():
                         unsafe_allow_html=True,
                     )
                     st.dataframe(_display_table(client_style_table), width="stretch")
-            display_methods = st.multiselect(
-                "Methods to show in subgroup charts",
-                result["methods"],
-                default=result["methods"],
-                format_func=lambda method: METHOD_LABELS.get(method, method),
-                key="subgroup_chart_methods",
-                help="Use this to simplify all subgroup charts without rerunning the analysis.",
+                    render_table_download(
+                        "Download Client-Style Shapley Table CSV",
+                        client_style_table,
+                        "client_style_shapley_table.csv",
+                        dependent_variable=result["target"],
+                    )
+            active_methods = get_active_chart_methods(
+                result["methods"], "subgroup_chart_methods"
             )
-            active_methods = display_methods or result["methods"]
+            with st.expander("Chart method controls", expanded=True):
+                active_methods = render_chart_method_checkboxes(
+                    result["methods"], "subgroup_chart_methods"
+                )
             render_results_guide(
                 result["target"], active_methods, subgroup_label=result["sg_var"]
+            )
+            render_table_download(
+                "Download Main Subgroup Results CSV",
+                result["subgroup_export_table"],
+                "subgroup_driver_main_results.csv",
+                dependent_variable=result["target"],
             )
             for warning in result.get("warnings", []):
                 st.warning(warning)
@@ -1975,6 +2288,12 @@ def render_dashboard():
                         unsafe_allow_html=True,
                     )
                     st.dataframe(_display_table(summary), width="stretch")
+                    render_table_download(
+                        "Download Subgroup Status Table CSV",
+                        summary,
+                        "subgroup_status_table.csv",
+                        dependent_variable=result["target"],
+                    )
             chart_x_domain = chart_range_control(
                 result["kda_result"], active_methods, "subgroup_chart"
             )
@@ -2005,6 +2324,13 @@ def render_dashboard():
                         unsafe_allow_html=True,
                     )
                     st.dataframe(_display_table(item["export_table"]), width="stretch")
+                    group_file = _re.sub(r"[^a-zA-Z0-9_]+", "_", str(item["group"])).strip("_")
+                    render_table_download(
+                        f'Download {item["group"]} Score Table CSV',
+                        item["export_table"],
+                        f"subgroup_{group_file or 'group'}_score_table.csv",
+                        dependent_variable=result["target"],
+                    )
             with st.expander("Downloadable subgroup scores"):
                 st.markdown(
                     '<div class="gbk-mini-note">This combined table stacks all included group-level rankings into one export.</div>',
@@ -2014,12 +2340,11 @@ def render_dashboard():
                     _display_table(result["subgroup_export_table"]),
                     width="stretch",
                 )
-                st.download_button(
-                    "Download subgroup score table CSV",
-                    result["subgroup_export_table"].to_csv(index=False).encode("utf-8"),
-                    file_name="subgroup_driver_actual_scores.csv",
-                    mime="text/csv",
-                    width="stretch",
+                render_table_download(
+                    "Download Subgroup Score Table CSV",
+                    result["subgroup_export_table"],
+                    "subgroup_driver_actual_scores.csv",
+                    dependent_variable=result["target"],
                 )
             with st.expander("Overall ranking summary"):
                 st.markdown(
@@ -2030,29 +2355,12 @@ def render_dashboard():
                     _display_table(result["kda_result"].ranking_table),
                     width="stretch",
                 )
-
-    with st.expander("Raw data preview"):
-        st.markdown(
-            '<div class="gbk-mini-note">First five rows from the uploaded file.</div>',
-            unsafe_allow_html=True,
-        )
-        st.dataframe(_display_table(df_raw.head()), width="stretch")
-
-    with st.expander("Data preparation details"):
-        st.markdown(
-            f"""
-        <div class="gbk-note">
-          These automatic checks keep obvious ID, date, lookup, and unusable columns out of the analysis-ready set.<br><br>
-          <b>Excluded ID/date/meta columns:</b><br>{pill_tags(meta["excluded_cols"])}<br><br>
-          <b>Dropped because of high missing data:</b><br>{pill_tags(meta["drop_missing_cols"])}<br><br>
-          <b>Suggested subgroup columns:</b><br>{pill_tags(meta["subgroup_candidates"])}<br><br>
-          <b>Suggested control columns:</b><br>{pill_tags(meta.get("control_candidates", []))}<br><br>
-          <b>Dropped because all values were the same:</b><br>{pill_tags(meta["constant_cols"])}
-        </div>
-        """,
-            unsafe_allow_html=True,
-        )
-
+                render_table_download(
+                    "Download Overall Ranking Summary CSV",
+                    result["kda_result"].ranking_table,
+                    "overall_ranking_summary.csv",
+                    dependent_variable=result["target"],
+                )
 
 if __name__ == "__main__":
     render_dashboard()
