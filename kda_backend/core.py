@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .applicability import ALL_METHODS, method_applicability
-from .methods import METHOD_REGISTRY, normalize_scores, rank_desc
+from .methods import METHOD_REGISTRY, normalize_scores, rank_desc, share100_scores
 from .plotting import driver_bar_chart
 from .preprocessing import complete_cases, detect_var_type
 from .schemas import KDAResult, MethodResult
@@ -106,14 +106,24 @@ def _assemble_tables(
             lower, upper = method_intervals[method]
             importance[f"{method}_ci_lower"] = lower.reindex(x_vars).to_numpy()
             importance[f"{method}_ci_upper"] = upper.reindex(x_vars).to_numpy()
-        importance[f"{method}_index"] = normalize_scores(scores).to_numpy()
+        average100_scores = normalize_scores(scores)
+        share_scores = share100_scores(scores)
+        importance[f"{method}_average100"] = average100_scores.to_numpy()
+        importance[f"{method}_index"] = share_scores.to_numpy()
+        importance[f"{method}_share"] = share_scores.to_numpy()
         importance[f"{method}_rank"] = rank_desc(scores).to_numpy()
         warnings = method_warnings.get(method, [])
         importance[f"{method}_warning"] = "; ".join(warnings) if warnings else ""
 
     index_cols = [f"{method}_index" for method in methods]
+    share_cols = [f"{method}_share" for method in methods]
+    average100_cols = [f"{method}_average100" for method in methods]
     rank_cols = [f"{method}_rank" for method in methods]
     importance["mean_method_index"] = importance[index_cols].mean(axis=1, skipna=True)
+    importance["mean_method_share"] = importance[share_cols].mean(axis=1, skipna=True)
+    importance["mean_method_average100"] = importance[average100_cols].mean(
+        axis=1, skipna=True
+    )
     importance["average_rank"] = importance[rank_cols].mean(axis=1, skipna=True)
     importance["median_rank"] = importance[rank_cols].median(axis=1, skipna=True)
     importance["top3_appearances"] = (importance[rank_cols] <= 3).sum(axis=1)
@@ -123,13 +133,15 @@ def _assemble_tables(
             "driver",
             "average_rank",
             "median_rank",
+            "mean_method_share",
             "mean_method_index",
+            "mean_method_average100",
             "top3_appearances",
             *rank_cols,
         ]
     ].copy()
     ranking = ranking.sort_values(
-        ["average_rank", "mean_method_index", "driver"],
+        ["average_rank", "mean_method_share", "driver"],
         ascending=[True, False, True],
         na_position="last",
     ).reset_index(drop=True)

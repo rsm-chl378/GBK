@@ -44,6 +44,19 @@ def normalize_scores(values: pd.Series) -> pd.Series:
     return out
 
 
+def share100_scores(values: pd.Series) -> pd.Series:
+    finite = values.replace([np.inf, -np.inf], np.nan).dropna()
+    out = pd.Series(np.nan, index=values.index, dtype=float)
+    if finite.empty:
+        return out
+    abs_values = finite.abs()
+    total = abs_values.sum()
+    if not np.isfinite(total) or math.isclose(float(total), 0.0):
+        return out
+    out.loc[finite.index] = abs_values / total * 100.0
+    return out
+
+
 def rank_desc(values: pd.Series) -> pd.Series:
     return values.rank(ascending=False, method="average")
 
