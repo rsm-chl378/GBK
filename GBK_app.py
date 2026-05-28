@@ -1,4 +1,5 @@
 import html as _html
+import inspect as _inspect
 import re as _re
 
 import altair as alt
@@ -1609,20 +1610,25 @@ def run_analysis(
     )
     y_type_override = infer_y_type_override(model_df, target)
 
+    run_kda_kwargs = {
+        "y_var": target,
+        "x_vars": predictors,
+        "methods": methods,
+        "controls": controls,
+        "subgroup": sg_var,
+        "method_params": method_params,
+        "bootstrap_methods": bootstrap_methods,
+        "bootstrap_params": bootstrap_params,
+        "y_type_override": y_type_override,
+    }
+    if (
+        progress_callback is not None
+        and "progress_callback" in _inspect.signature(run_kda).parameters
+    ):
+        run_kda_kwargs["progress_callback"] = progress_callback
+
     try:
-        kda_result = run_kda(
-            model_df,
-            y_var=target,
-            x_vars=predictors,
-            methods=methods,
-            controls=controls,
-            subgroup=sg_var,
-            method_params=method_params,
-            bootstrap_methods=bootstrap_methods,
-            bootstrap_params=bootstrap_params,
-            y_type_override=y_type_override,
-            progress_callback=progress_callback,
-        )
+        kda_result = run_kda(model_df, **run_kda_kwargs)
     except Exception as exc:
         return {"error": str(exc)}
 
