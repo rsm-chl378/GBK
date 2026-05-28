@@ -14,6 +14,7 @@ from GBK_app import (
     METHOD_COLORS,
     METHOD_LABELS,
     _driver_axis_sort,
+    _importance_export_table,
     build_driver_interval_chart,
     build_interactive_chart_data,
     _client_style_shapley_table,
@@ -482,7 +483,7 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         self.assertTrue(hasattr(fig, "savefig"))
         self.assertGreaterEqual(len(fig.axes[0].collections), 1)
 
-    def test_interactive_chart_data_uses_normalized_scores_and_ci(self):
+    def test_interactive_chart_data_uses_sum100_scores_and_ci(self):
         rng = np.random.default_rng(463)
         n = 72
         df = pd.DataFrame(
@@ -507,10 +508,71 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
         self.assertEqual(set(chart_df["method"]), {"Correlation", "Regression"})
         for _, group in chart_df.groupby("method"):
-            self.assertAlmostEqual(group["score"].mean(), 100.0, places=6)
+            self.assertAlmostEqual(group["score"].sum(), 100.0, places=6)
         self.assertTrue(chart_df["ci_lower"].notna().any())
         self.assertTrue(chart_df["ci_upper"].notna().any())
-        self.assertGreater(chart_df["score"].max(), 100)
+        self.assertLessEqual(chart_df["score"].max(), 100)
+
+    def test_run_kda_adds_sum100_share_columns_for_each_method(self):
+        rng = np.random.default_rng(475)
+        n = 80
+        df = pd.DataFrame(
+            {
+                "consideration": rng.normal(size=n),
+                "trust": rng.normal(size=n),
+                "value": rng.normal(size=n),
+                "style": rng.normal(size=n),
+            }
+        )
+        df["consideration"] = 1.4 * df["trust"] + 0.5 * df["value"] + rng.normal(scale=0.25, size=n)
+
+        result = run_kda(
+            df,
+            y_var="consideration",
+            x_vars=["trust", "value", "style"],
+            methods=["correlation", "regression", "shapley_lmg"],
+        )
+
+        table = result.importance_table
+        for method in ["correlation", "regression", "shapley_lmg"]:
+            share_col = f"{method}_share"
+            self.assertIn(share_col, table.columns)
+            self.assertAlmostEqual(table[share_col].sum(), 100.0, places=8)
+        self.assertIn("mean_method_share", table.columns)
+        self.assertAlmostEqual(table["mean_method_share"].sum(), 100.0, places=8)
+
+        export_table = _importance_export_table(result)
+        for method in ["correlation", "regression", "shapley_lmg"]:
+            self.assertIn(f"{method}_sum100", export_table.columns)
+            pd.testing.assert_series_equal(
+                export_table[f"{method}_sum100"],
+                export_table[f"{method}_share"],
+                check_names=False,
+            )
+
+    def test_interactive_chart_data_uses_sum100_share_scores(self):
+        importance_table = pd.DataFrame(
+            {
+                "driver": ["top_driver", "middle_driver", "bottom_driver"],
+                "mean_method_index": [150.0, 100.0, 50.0],
+                "mean_method_share": [50.0, 33.3333333333, 16.6666666667],
+                "correlation": [0.9, 0.6, 0.3],
+                "correlation_index": [150.0, 100.0, 50.0],
+                "correlation_share": [50.0, 33.3333333333, 16.6666666667],
+            }
+        )
+
+        chart_df = build_interactive_chart_data(importance_table, ["correlation"])
+
+        self.assertAlmostEqual(chart_df["score"].sum(), 100.0, places=8)
+        self.assertEqual(
+            chart_df.sort_values("driver_order")["score"].round(1).tolist(),
+            [50.0, 33.3, 16.7],
+        )
+        self.assertEqual(
+            chart_df.sort_values("driver_order")["legacy_index"].round(1).tolist(),
+            [150.0, 100.0, 50.0],
+        )
 
     def test_interactive_chart_axis_order_puts_top_driver_first(self):
         importance_table = pd.DataFrame(

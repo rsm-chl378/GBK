@@ -835,12 +835,16 @@ def build_driver_interval_chart(importance_table, methods):
     method_cols = [method for method in methods if method in importance_table.columns]
     if not method_cols:
         method_cols = (
-            ["mean_method_index"]
+            ["mean_method_share"]
+            if "mean_method_share" in importance_table.columns
+            else ["mean_method_index"]
             if "mean_method_index" in importance_table.columns
             else []
         )
     plot_df = importance_table.copy()
-    if "mean_method_index" in plot_df.columns:
+    if "mean_method_share" in plot_df.columns:
+        plot_df = plot_df.sort_values("mean_method_share", ascending=True)
+    elif "mean_method_index" in plot_df.columns:
         plot_df = plot_df.sort_values("mean_method_index", ascending=True)
     elif method_cols:
         plot_df = plot_df.sort_values(method_cols[0], ascending=True)
@@ -851,14 +855,20 @@ def build_driver_interval_chart(importance_table, methods):
     offsets = np.linspace(-0.18, 0.18, max(len(method_cols), 1))
 
     for idx, method in enumerate(method_cols):
-        scores = plot_df[method].to_numpy(dtype=float)
+        score_col = f"{method}_share"
+        scores_series = plot_df[score_col] if score_col in plot_df.columns else plot_df[method]
+        scores = scores_series.to_numpy(dtype=float)
         y = y_pos + offsets[idx]
         color = METHOD_COLORS.get(method, BAR_COLORS[idx % len(BAR_COLORS)])
         lower_col = f"{method}_ci_lower"
         upper_col = f"{method}_ci_upper"
         if lower_col in plot_df.columns and upper_col in plot_df.columns:
-            lower = plot_df[lower_col].to_numpy(dtype=float)
-            upper = plot_df[upper_col].to_numpy(dtype=float)
+            lower = _share_like_main_scores(
+                plot_df[lower_col], plot_df[method]
+            ).to_numpy(dtype=float)
+            upper = _share_like_main_scores(
+                plot_df[upper_col], plot_df[method]
+            ).to_numpy(dtype=float)
             left_err = np.where(np.isfinite(lower), scores - lower, 0)
             right_err = np.where(np.isfinite(upper), upper - scores, 0)
             ax.errorbar(
@@ -886,7 +896,7 @@ def build_driver_interval_chart(importance_table, methods):
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels([display_name(driver) for driver in plot_df["driver"]])
-    ax.set_xlabel("Importance score")
+    ax.set_xlabel("Importance share (%)")
     ax.set_ylabel("Driver")
     ax.set_title("Driver Importance with Bootstrap Confidence Intervals")
     ax.grid(axis="x", color="#D8E2EA", alpha=0.45)
@@ -914,11 +924,28 @@ def _normalize_like_main_scores(values, main_scores):
     return out
 
 
+def _share_like_main_scores(values, main_scores):
+    finite = main_scores.replace([np.inf, -np.inf], np.nan).dropna()
+    out = pd.Series(np.nan, index=values.index, dtype=float)
+    if finite.empty:
+        return out
+    total = finite.abs().sum()
+    if not np.isfinite(total) or np.isclose(float(total), 0.0):
+        return out
+    finite_values = values.replace([np.inf, -np.inf], np.nan).dropna()
+    out.loc[finite_values.index] = finite_values.abs() / total * 100.0
+    return out
+
+
 def build_interactive_chart_data(importance_table, methods):
     rows = []
     table = importance_table.copy()
     sort_col = (
-        "mean_method_index" if "mean_method_index" in table.columns else methods[0]
+        "mean_method_share"
+        if "mean_method_share" in table.columns
+        else "mean_method_index"
+        if "mean_method_index" in table.columns
+        else methods[0]
     )
     table = table.sort_values(sort_col, ascending=False).reset_index(drop=True)
     driver_order = table["driver"].tolist()
@@ -926,8 +953,22 @@ def build_interactive_chart_data(importance_table, methods):
     for method in methods:
         if method not in table.columns:
             continue
-        score_col = f"{method}_index"
-        scores = table[score_col] if score_col in table.columns else table[method]
+        share_col = f"{method}_share"
+        index_col = f"{method}_index"
+        if share_col in table.columns:
+            scores = table[share_col]
+            score_scale = "share"
+        elif index_col in table.columns:
+            scores = table[index_col]
+            score_scale = "index"
+        else:
+            scores = table[method]
+            score_scale = "raw"
+        legacy_index = (
+            table[index_col]
+            if index_col in table.columns
+            else pd.Series(np.nan, index=table.index, dtype=float)
+        )
         lower = pd.Series(np.nan, index=table.index, dtype=float)
         upper = pd.Series(np.nan, index=table.index, dtype=float)
         if (
@@ -935,12 +976,16 @@ def build_interactive_chart_data(importance_table, methods):
             and f"{method}_ci_upper" in table.columns
         ):
             main_scores = table[method]
-            lower = _normalize_like_main_scores(
-                table[f"{method}_ci_lower"], main_scores
-            )
-            upper = _normalize_like_main_scores(
-                table[f"{method}_ci_upper"], main_scores
-            )
+            if score_scale == "share":
+                lower = _share_like_main_scores(table[f"{method}_ci_lower"], main_scores)
+                upper = _share_like_main_scores(table[f"{method}_ci_upper"], main_scores)
+            elif score_scale == "index":
+                lower = _normalize_like_main_scores(
+                    table[f"{method}_ci_lower"], main_scores
+                )
+                upper = _normalize_like_main_scores(
+                    table[f"{method}_ci_upper"], main_scores
+                )
         for idx, row in table.iterrows():
             rows.append(
                 {
@@ -954,6 +999,9 @@ def build_interactive_chart_data(importance_table, methods):
                     else np.nan,
                     "raw_score": float(row[method])
                     if pd.notna(row[method])
+                    else np.nan,
+                    "legacy_index": float(legacy_index.iloc[idx])
+                    if pd.notna(legacy_index.iloc[idx])
                     else np.nan,
                     "ci_lower": float(lower.iloc[idx])
                     if pd.notna(lower.iloc[idx])
@@ -1064,7 +1112,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             y=y_axis,
             x=alt.X(
                 "x_min:Q",
-                title="Indexed score (average = 100)",
+                title="Importance share (%)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="x_max:Q",
@@ -1082,7 +1130,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             y=y_axis,
             x=alt.X(
                 "x_min:Q",
-                title="Indexed score (average = 100)",
+                title="Importance share (%)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="x_max:Q",
@@ -1099,7 +1147,8 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         tooltip=[
             alt.Tooltip("driver_label:N", title="Driver"),
             alt.Tooltip("method:N", title="Method"),
-            alt.Tooltip("score:Q", title="Index score", format=".1f"),
+            alt.Tooltip("score:Q", title="Importance share (%)", format=".1f"),
+            alt.Tooltip("legacy_index:Q", title="Average-100 index", format=".1f"),
             alt.Tooltip("raw_score:Q", title="Raw score", format=".4f"),
             alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
             alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
@@ -1114,7 +1163,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             yOffset=method_offset,
             x=alt.X(
                 "ci_lower:Q",
-                title="Indexed score (average = 100)",
+                title="Importance share (%)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="ci_upper:Q",
@@ -1137,7 +1186,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         .encode(
             x=alt.X(
                 "score:Q",
-                title="Indexed score (average = 100)",
+                title="Importance share (%)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
         )
@@ -1214,12 +1263,12 @@ def render_chart_disclaimer(kda_result, methods):
     if ci_methods:
         labels = ", ".join(METHOD_LABELS.get(method, method) for method in ci_methods)
         st.markdown(
-            f'<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Horizontal lines are bootstrap confidence intervals for {labels}; dots and intervals are vertically staggered by method to make overlaps easier to read. Raw scores remain in the export table.</div>',
+            f'<div class="gbk-disclaimer">Each dot is an importance share: within each method, the shown drivers sum to 100, and higher means stronger. Horizontal lines are bootstrap uncertainty intervals for {labels}; dots and intervals are vertically staggered by method to make overlaps easier to read. Raw scores and average-100 indexes remain in the export table.</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            '<div class="gbk-disclaimer">Each dot is an indexed score: 100 is average among the shown drivers, and higher means stronger. Enable bootstrap before running analysis to add confidence intervals.</div>',
+            '<div class="gbk-disclaimer">Each dot is an importance share: within each method, the shown drivers sum to 100, and higher means stronger. Enable bootstrap before running analysis to add uncertainty intervals.</div>',
             unsafe_allow_html=True,
         )
 
@@ -1322,7 +1371,7 @@ def render_results_guide(target, methods, subgroup_label=None):
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">How to read the results</div>'
         f'<div class="gbk-note"><b>Top drivers</b> are the predictors most strongly linked with <b>{t}</b> in this run. '
-        f"Read the ranking from top to bottom. Scores above 100 are stronger than the average driver; scores below 100 are weaker. "
+        f"Read the ranking from top to bottom. Scores are importance shares; within each method, the shown drivers sum to 100. "
         f"When several methods point to the same top drivers, the story is usually more dependable. "
         f"These results are directional, not proof of cause and effect.</div>"
         f'<div class="gbk-mini-note"><b>Methods shown:</b> {method_text}</div>'
@@ -1398,15 +1447,22 @@ def render_detail_table(ranked):
 
 
 def _ranking_to_series(ranking_table):
+    score_col = (
+        "mean_method_share"
+        if "mean_method_share" in ranking_table.columns
+        else "mean_method_index"
+    )
     return pd.Series(
-        ranking_table["mean_method_index"].to_numpy(),
+        ranking_table[score_col].to_numpy(),
         index=ranking_table["driver"],
     ).sort_values(ascending=False)
 
 
 def _importance_to_series(importance_table):
     table = importance_table.copy()
-    if "mean_method_index" in table.columns:
+    if "mean_method_share" in table.columns:
+        score_col = "mean_method_share"
+    elif "mean_method_index" in table.columns:
         score_col = "mean_method_index"
     else:
         method_cols = [
@@ -1414,7 +1470,15 @@ def _importance_to_series(importance_table):
             for col in table.columns
             if col not in {"driver", "average_rank", "median_rank", "top3_appearances"}
             and not col.endswith(
-                ("_index", "_rank", "_warning", "_ci_lower", "_ci_upper")
+                (
+                    "_index",
+                    "_share",
+                    "_sum100",
+                    "_rank",
+                    "_warning",
+                    "_ci_lower",
+                    "_ci_upper",
+                )
             )
             and pd.api.types.is_numeric_dtype(table[col])
         ]
@@ -1428,6 +1492,11 @@ def _importance_to_series(importance_table):
 
 def _importance_export_table(kda_result):
     table = kda_result.importance_table.copy()
+    for share_col in [col for col in table.columns if col.endswith("_share")]:
+        method = share_col[: -len("_share")]
+        sum100_col = f"{method}_sum100"
+        if method and sum100_col not in table.columns:
+            table[sum100_col] = table[share_col]
     for method in SHARE_SCALE_METHODS:
         if method in table.columns and f"{method}_sum100" not in table.columns:
             table[f"{method}_sum100"] = table[method] * 100.0
