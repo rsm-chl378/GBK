@@ -15,7 +15,9 @@ from GBK_app import (
     METHOD_LABELS,
     _driver_axis_sort,
     _importance_export_table,
+    _coerce_chart_x_range,
     build_driver_interval_chart,
+    chart_range_bounds,
     build_interactive_chart_data,
     _client_style_shapley_table,
     build_interactive_driver_chart,
@@ -614,6 +616,24 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
 
         self.assertEqual(x_domain, [0.0, 55.0])
         self.assertFalse(unbounded_scale_params)
+
+    def test_chart_range_slider_bounds_are_data_driven_and_clamped(self):
+        importance_table = pd.DataFrame(
+            {
+                "driver": ["trust", "value", "service"],
+                "mean_method_share": [42.8571428571, 32.1428571429, 25.0],
+                "correlation": [0.24, 0.18, 0.14],
+                "correlation_share": [42.8571428571, 32.1428571429, 25.0],
+                "correlation_ci_lower": [0.21, 0.16, 0.12],
+                "correlation_ci_upper": [0.27, 0.20, 0.16],
+            }
+        )
+        kda_result = type("KDAResult", (), {"importance_table": importance_table})()
+
+        bounds = chart_range_bounds(kda_result, ["correlation"])
+
+        self.assertEqual(bounds, (0.0, 55.0))
+        self.assertEqual(_coerce_chart_x_range((-240.0, 200.0), bounds), bounds)
 
     def test_interactive_chart_axis_order_puts_top_driver_first(self):
         importance_table = pd.DataFrame(
