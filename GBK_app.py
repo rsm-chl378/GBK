@@ -1151,7 +1151,6 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             alt.Tooltip("driver_label:N", title="Driver"),
             alt.Tooltip("method:N", title="Method"),
             alt.Tooltip("score:Q", title="Importance share (%)", format=".1f"),
-            alt.Tooltip("legacy_index:Q", title="Average-100 index", format=".1f"),
             alt.Tooltip("raw_score:Q", title="Raw score", format=".4f"),
             alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
             alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),

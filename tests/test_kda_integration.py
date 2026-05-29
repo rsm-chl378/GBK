@@ -628,6 +628,23 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         self.assertNotIn(spec["background"].lower(), {"#000", "#000000", "black"})
         self.assertNotIn(spec["background"], set(METHOD_COLORS.values()))
 
+    def test_interactive_chart_hides_average100_tooltip(self):
+        importance_table = pd.DataFrame(
+            {
+                "driver": ["trust", "value", "service"],
+                "mean_method_index": [50.0, 33.3333333333, 16.6666666667],
+                "correlation": [0.9, 0.6, 0.3],
+                "correlation_index": [50.0, 33.3333333333, 16.6666666667],
+                "correlation_average100": [150.0, 100.0, 50.0],
+            }
+        )
+
+        chart = build_interactive_driver_chart(importance_table, ["correlation"])
+        spec_text = str(chart.to_dict())
+
+        self.assertIn("Importance share (%)", spec_text)
+        self.assertNotIn("Average-100 index", spec_text)
+
     def test_default_methods_are_correlation_and_regression(self):
         self.assertEqual(DEFAULT_METHODS, ("correlation", "regression"))
 
