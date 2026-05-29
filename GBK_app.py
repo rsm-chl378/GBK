@@ -495,6 +495,7 @@ GBK_CHART_BG = "#334651"
 GBK_CHART_TEXT = "#E9EEF2"
 GBK_CHART_MUTED_TEXT = "#C7D8E4"
 GBK_CHART_GRID = "#5E7486"
+DEFAULT_CHART_X_DOMAIN = (-10.0, 50.0)
 DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson", "coa")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
@@ -1084,19 +1085,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     domain = [METHOD_LABELS.get(method, method) for method in methods]
     chart_colors = [METHOD_COLORS.get(method, "#789FC0") for method in methods]
     y_sort = _driver_axis_sort(chart_df)
-    finite_values = (
-        pd.concat(
-            [
-                chart_df["score"],
-                chart_df["ci_lower"].dropna(),
-                chart_df["ci_upper"].dropna(),
-            ],
-            ignore_index=True,
-        )
-        .replace([np.inf, -np.inf], np.nan)
-        .dropna()
-    )
-    x_domain = _score_axis_domain(finite_values)
+    x_domain = list(DEFAULT_CHART_X_DOMAIN)
     if x_domain_override:
         x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
     driver_bands = pd.DataFrame(
@@ -1207,7 +1196,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     chart = (bands + separators + ci + points).properties(
         height=max(420, (44 + (12 * min(len(domain), 8))) * len(y_sort)),
         width="container",
-    )
+    ).interactive(bind_x=True, bind_y=False)
     return apply_gbk_altair_theme(chart)
 
 
@@ -1353,12 +1342,14 @@ def chart_range_control(kda_result, methods, key_prefix):
     full_domain = (float(np.floor(data_domain[0])), float(np.ceil(data_domain[1])))
     with st.expander("Chart display controls"):
         auto_range = st.checkbox(
-            "Use automatic x-axis scale", value=True, key=f"{key_prefix}_auto_range"
+            "Use default draggable x-axis (-10 to 50)",
+            value=True,
+            key=f"{key_prefix}_auto_range",
         )
         if auto_range:
             return None
         return st.slider(
-            "Visible sum-to-100 index range",
+            "Manual visible sum-to-100 index range",
             min_value=full_domain[0],
             max_value=full_domain[1],
             value=full_domain,
