@@ -1205,7 +1205,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     chart = (bands + separators + ci + points).properties(
         height=max(420, (44 + (12 * min(len(domain), 8))) * len(y_sort)),
         width="container",
-    ).interactive(bind_x=True, bind_y=False)
+    )
     return apply_gbk_altair_theme(chart)
 
 
@@ -1351,14 +1351,14 @@ def chart_range_control(kda_result, methods, key_prefix):
     full_domain = (float(np.floor(data_domain[0])), float(np.ceil(data_domain[1])))
     with st.expander("Chart display controls"):
         auto_range = st.checkbox(
-            "Use data-driven draggable x-axis",
+            "Use data-driven x-axis",
             value=True,
             key=f"{key_prefix}_auto_range",
         )
         if auto_range:
             return None
         return st.slider(
-            "Manual visible sum-to-100 index range",
+            "Visible sum-to-100 index range",
             min_value=full_domain[0],
             max_value=full_domain[1],
             value=full_domain,
