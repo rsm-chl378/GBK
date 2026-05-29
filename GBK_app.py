@@ -897,7 +897,7 @@ def build_driver_interval_chart(importance_table, methods):
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels([display_name(driver) for driver in plot_df["driver"]])
-    ax.set_xlabel("Importance share (%)")
+    ax.set_xlabel("Index (sum = 100)")
     ax.set_ylabel("Driver")
     ax.set_title("Driver Importance with Bootstrap Confidence Intervals")
     ax.grid(axis="x", color="#D8E2EA", alpha=0.45)
@@ -1115,7 +1115,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             y=y_axis,
             x=alt.X(
                 "x_min:Q",
-                title="Importance share (%)",
+                title="Index (sum = 100)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="x_max:Q",
@@ -1133,7 +1133,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             y=y_axis,
             x=alt.X(
                 "x_min:Q",
-                title="Importance share (%)",
+                title="Index (sum = 100)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="x_max:Q",
@@ -1150,7 +1150,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         tooltip=[
             alt.Tooltip("driver_label:N", title="Driver"),
             alt.Tooltip("method:N", title="Method"),
-            alt.Tooltip("score:Q", title="Importance share (%)", format=".1f"),
+            alt.Tooltip("score:Q", title="Index", format=".1f"),
             alt.Tooltip("raw_score:Q", title="Raw score", format=".4f"),
             alt.Tooltip("ci_lower:Q", title="Lower uncertainty band", format=".1f"),
             alt.Tooltip("ci_upper:Q", title="Upper uncertainty band", format=".1f"),
@@ -1165,7 +1165,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
             yOffset=method_offset,
             x=alt.X(
                 "ci_lower:Q",
-                title="Importance share (%)",
+                title="Index (sum = 100)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
             x2="ci_upper:Q",
@@ -1188,7 +1188,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         .encode(
             x=alt.X(
                 "score:Q",
-                title="Importance share (%)",
+                title="Index (sum = 100)",
                 scale=alt.Scale(domain=x_domain, zero=False),
             ),
         )
@@ -1265,12 +1265,12 @@ def render_chart_disclaimer(kda_result, methods):
     if ci_methods:
         labels = ", ".join(METHOD_LABELS.get(method, method) for method in ci_methods)
         st.markdown(
-            f'<div class="gbk-disclaimer">Each dot is an importance share: within each method, the shown drivers sum to 100, and higher means stronger. Horizontal lines are bootstrap uncertainty intervals for {labels}; dots and intervals are vertically staggered by method to make overlaps easier to read. Raw scores and average-100 indexes remain in the export table.</div>',
+            f'<div class="gbk-disclaimer">Each dot is an index score: within each method, the shown drivers sum to 100, and higher means stronger. Horizontal lines are bootstrap uncertainty intervals for {labels}; dots and intervals are vertically staggered by method to make overlaps easier to read. Raw scores and average-100 indexes remain in the export table.</div>',
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            '<div class="gbk-disclaimer">Each dot is an importance share: within each method, the shown drivers sum to 100, and higher means stronger. Enable bootstrap before running analysis to add uncertainty intervals.</div>',
+            '<div class="gbk-disclaimer">Each dot is an index score: within each method, the shown drivers sum to 100, and higher means stronger. Enable bootstrap before running analysis to add uncertainty intervals.</div>',
             unsafe_allow_html=True,
         )
 
@@ -1373,7 +1373,7 @@ def render_results_guide(target, methods, subgroup_label=None):
     st.markdown(
         f'<div class="gbk-panel"><div class="gbk-panel-title">How to read the results</div>'
         f'<div class="gbk-note"><b>Top drivers</b> are the predictors most strongly linked with <b>{t}</b> in this run. '
-        f"Read the ranking from top to bottom. Scores are importance shares; within each method, the shown drivers sum to 100. "
+        f"Read the ranking from top to bottom. Scores are index values; within each method, the shown drivers sum to 100. "
         f"When several methods point to the same top drivers, the story is usually more dependable. "
         f"These results are directional, not proof of cause and effect.</div>"
         f'<div class="gbk-mini-note"><b>Methods shown:</b> {method_text}</div>'

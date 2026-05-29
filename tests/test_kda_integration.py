@@ -642,7 +642,8 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
         chart = build_interactive_driver_chart(importance_table, ["correlation"])
         spec_text = str(chart.to_dict())
 
-        self.assertIn("Importance share (%)", spec_text)
+        self.assertIn("Index (sum = 100)", spec_text)
+        self.assertIn("'title': 'Index'", spec_text)
         self.assertNotIn("Average-100 index", spec_text)
 
     def test_default_methods_are_correlation_and_regression(self):
