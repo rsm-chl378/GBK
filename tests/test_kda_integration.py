@@ -591,7 +591,7 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
             [150.0, 100.0, 50.0],
         )
 
-    def test_interactive_chart_defaults_to_scrollable_x_axis_window(self):
+    def test_interactive_chart_uses_data_driven_scrollable_x_axis_window(self):
         importance_table = pd.DataFrame(
             {
                 "driver": ["trust", "value", "service"],
@@ -613,7 +613,7 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
             and param.get("select", {}).get("encodings") == ["x"]
         ]
 
-        self.assertEqual(x_domain, [-10.0, 50.0])
+        self.assertEqual(x_domain, [0.0, 55.0])
         self.assertTrue(x_scale_params)
 
     def test_interactive_chart_axis_order_puts_top_driver_first(self):

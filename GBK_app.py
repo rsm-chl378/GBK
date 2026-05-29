@@ -495,7 +495,6 @@ GBK_CHART_BG = "#334651"
 GBK_CHART_TEXT = "#E9EEF2"
 GBK_CHART_MUTED_TEXT = "#C7D8E4"
 GBK_CHART_GRID = "#5E7486"
-DEFAULT_CHART_X_DOMAIN = (-10.0, 50.0)
 DEFAULT_METHODS = ("correlation", "regression")
 DEFAULT_BOOTSTRAP_METHODS = ("correlation", "regression", "shapley_lmg", "johnson", "coa")
 HEAVY_BOOTSTRAP_METHODS = ("random_forest", "xgboost", "shap")
@@ -1065,16 +1064,26 @@ def apply_gbk_altair_theme(chart):
     )
 
 
-def _score_axis_domain(finite_values, pad_fraction=0.08, min_pad=5.0):
+def _chart_x_values(chart_df):
+    return pd.concat(
+        [
+            chart_df["score"],
+            chart_df["ci_lower"].dropna(),
+            chart_df["ci_upper"].dropna(),
+        ],
+        ignore_index=True,
+    )
+
+
+def _score_axis_domain(finite_values, pad_fraction=0.10):
     values = finite_values.replace([np.inf, -np.inf], np.nan).dropna()
     if values.empty:
         return [0.0, 100.0]
-    min_x = min(0.0, float(values.min()))
-    max_x = float(values.max())
-    if np.isclose(max_x, min_x):
-        max_x = min_x + 1.0
-    pad = max((max_x - min_x) * pad_fraction, min_pad)
-    return [float(min_x - pad), float(max_x + pad)]
+    max_x = max(0.0, float(values.max()))
+    padded_max = max(max_x * (1.0 + pad_fraction), 5.0)
+    step = 10.0 if padded_max > 100.0 else 5.0
+    nice_max = float(np.ceil(padded_max / step) * step)
+    return [0.0, nice_max]
 
 
 def build_interactive_driver_chart(importance_table, methods, x_domain_override=None):
@@ -1085,7 +1094,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
     domain = [METHOD_LABELS.get(method, method) for method in methods]
     chart_colors = [METHOD_COLORS.get(method, "#789FC0") for method in methods]
     y_sort = _driver_axis_sort(chart_df)
-    x_domain = list(DEFAULT_CHART_X_DOMAIN)
+    x_domain = _score_axis_domain(_chart_x_values(chart_df))
     if x_domain_override:
         x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
     driver_bands = pd.DataFrame(
@@ -1338,11 +1347,11 @@ def chart_range_control(kda_result, methods, key_prefix):
     )
     if finite_values.empty:
         return None
-    data_domain = _score_axis_domain(finite_values, pad_fraction=0.12, min_pad=5.0)
+    data_domain = _score_axis_domain(finite_values)
     full_domain = (float(np.floor(data_domain[0])), float(np.ceil(data_domain[1])))
     with st.expander("Chart display controls"):
         auto_range = st.checkbox(
-            "Use default draggable x-axis (-10 to 50)",
+            "Use data-driven draggable x-axis",
             value=True,
             key=f"{key_prefix}_auto_range",
         )
