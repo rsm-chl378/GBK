@@ -1064,6 +1064,18 @@ def apply_gbk_altair_theme(chart):
     )
 
 
+def _score_axis_domain(finite_values, pad_fraction=0.08, min_pad=5.0):
+    values = finite_values.replace([np.inf, -np.inf], np.nan).dropna()
+    if values.empty:
+        return [0.0, 100.0]
+    min_x = min(0.0, float(values.min()))
+    max_x = float(values.max())
+    if np.isclose(max_x, min_x):
+        max_x = min_x + 1.0
+    pad = max((max_x - min_x) * pad_fraction, min_pad)
+    return [float(min_x - pad), float(max_x + pad)]
+
+
 def build_interactive_driver_chart(importance_table, methods, x_domain_override=None):
     chart_df = build_interactive_chart_data(importance_table, methods)
     if chart_df.empty:
@@ -1084,13 +1096,7 @@ def build_interactive_driver_chart(importance_table, methods, x_domain_override=
         .replace([np.inf, -np.inf], np.nan)
         .dropna()
     )
-    if finite_values.empty:
-        x_domain = [0, 100]
-    else:
-        min_x = min(0.0, float(finite_values.min()))
-        max_x = max(100.0, float(finite_values.max()))
-        pad = max((max_x - min_x) * 0.08, 5.0)
-        x_domain = [min_x - pad, max_x + pad]
+    x_domain = _score_axis_domain(finite_values)
     if x_domain_override:
         x_domain = [float(x_domain_override[0]), float(x_domain_override[1])]
     driver_bands = pd.DataFrame(
@@ -1343,18 +1349,16 @@ def chart_range_control(kda_result, methods, key_prefix):
     )
     if finite_values.empty:
         return None
-    min_x = min(0.0, float(finite_values.min()))
-    max_x = max(100.0, float(finite_values.max()))
-    pad = max((max_x - min_x) * 0.12, 10.0)
-    full_domain = (float(np.floor(min_x - pad)), float(np.ceil(max_x + pad)))
+    data_domain = _score_axis_domain(finite_values, pad_fraction=0.12, min_pad=5.0)
+    full_domain = (float(np.floor(data_domain[0])), float(np.ceil(data_domain[1])))
     with st.expander("Chart display controls"):
         auto_range = st.checkbox(
-            "Keep automatic chart scale", value=True, key=f"{key_prefix}_auto_range"
+            "Use automatic x-axis scale", value=True, key=f"{key_prefix}_auto_range"
         )
         if auto_range:
             return None
         return st.slider(
-            "Visible score range",
+            "Visible sum-to-100 index range",
             min_value=full_domain[0],
             max_value=full_domain[1],
             value=full_domain,

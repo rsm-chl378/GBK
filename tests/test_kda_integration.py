@@ -591,6 +591,26 @@ class KDAFrontendIntegrationTests(unittest.TestCase):
             [150.0, 100.0, 50.0],
         )
 
+    def test_interactive_chart_auto_x_axis_scales_to_visible_scores(self):
+        importance_table = pd.DataFrame(
+            {
+                "driver": ["trust", "value", "service"],
+                "mean_method_share": [42.8571428571, 32.1428571429, 25.0],
+                "correlation": [0.24, 0.18, 0.14],
+                "correlation_share": [42.8571428571, 32.1428571429, 25.0],
+                "correlation_ci_lower": [0.21, 0.16, 0.12],
+                "correlation_ci_upper": [0.27, 0.20, 0.16],
+            }
+        )
+
+        chart = build_interactive_driver_chart(importance_table, ["correlation"])
+        spec = chart.to_dict()
+        x_domain = spec["layer"][0]["encoding"]["x"]["scale"]["domain"]
+
+        self.assertLess(x_domain[1], 60.0)
+        self.assertGreater(x_domain[1], 48.0)
+        self.assertLessEqual(x_domain[0], 0.0)
+
     def test_interactive_chart_axis_order_puts_top_driver_first(self):
         importance_table = pd.DataFrame(
             {
