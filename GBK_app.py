@@ -1285,7 +1285,7 @@ def render_chart_disclaimer(kda_result, methods):
 
 
 def render_interval_chart(
-    kda_result, methods, title="Driver importance", chart_x_domain=None, key_prefix=None
+    kda_result, methods, title="Driver importance", chart_x_domain=None
 ):
     st.markdown(f'<div class="gbk-panel-title">{title}</div>', unsafe_allow_html=True)
     if not methods:
@@ -1294,17 +1294,11 @@ def render_interval_chart(
             unsafe_allow_html=True,
         )
         return
-    if key_prefix:
-        chart_x_domain = chart_x_domain or chart_x_domain_from_state(
-            kda_result, methods, key_prefix
-        )
     chart = build_interactive_driver_chart(
         kda_result.importance_table, methods, chart_x_domain
     )
     if chart is not None:
         st.altair_chart(chart, width="stretch", theme=None)
-        if key_prefix:
-            render_chart_range_slider(kda_result, methods, key_prefix)
     render_chart_disclaimer(kda_result, methods)
 
 
@@ -1326,76 +1320,13 @@ def render_controlled_interval_chart(
                 unsafe_allow_html=True,
             )
         else:
-            active_chart_x_domain = chart_x_domain or chart_x_domain_from_state(
-                kda_result, active_methods, key_prefix
-            )
             chart = build_interactive_driver_chart(
-                kda_result.importance_table, active_methods, active_chart_x_domain
+                kda_result.importance_table, active_methods, chart_x_domain
             )
             if chart is not None:
                 st.altair_chart(chart, width="stretch", theme=None)
-                render_chart_range_slider(kda_result, active_methods, key_prefix)
             render_chart_disclaimer(kda_result, active_methods)
     return active_methods
-
-
-def chart_range_bounds(kda_result, methods):
-    chart_df = build_interactive_chart_data(kda_result.importance_table, methods)
-    if chart_df.empty:
-        return None
-    finite_values = (
-        pd.concat(
-            [
-                chart_df["score"],
-                chart_df["ci_lower"].dropna(),
-                chart_df["ci_upper"].dropna(),
-            ],
-            ignore_index=True,
-        )
-        .replace([np.inf, -np.inf], np.nan)
-        .dropna()
-    )
-    if finite_values.empty:
-        return None
-    data_domain = _score_axis_domain(finite_values)
-    return (float(np.floor(data_domain[0])), float(np.ceil(data_domain[1])))
-
-
-def _coerce_chart_x_range(value, bounds):
-    low, high = bounds
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        return bounds
-    start = max(low, min(float(value[0]), high))
-    end = max(low, min(float(value[1]), high))
-    if start >= end:
-        return bounds
-    return (start, end)
-
-
-def chart_x_domain_from_state(kda_result, methods, key_prefix):
-    bounds = chart_range_bounds(kda_result, methods)
-    if bounds is None:
-        return None
-    return _coerce_chart_x_range(st.session_state.get(f"{key_prefix}_x_range"), bounds)
-
-
-def render_chart_range_slider(kda_result, methods, key_prefix):
-    bounds = chart_range_bounds(kda_result, methods)
-    if bounds is None:
-        return None
-    key = f"{key_prefix}_x_range"
-    current = _coerce_chart_x_range(st.session_state.get(key), bounds)
-    if st.session_state.get(key) != current:
-        st.session_state[key] = current
-    return st.slider(
-        "Visible sum-to-100 index range",
-        min_value=bounds[0],
-        max_value=bounds[1],
-        value=current,
-        step=1.0,
-        key=key,
-        help="Drag the handles to move or narrow the visible x-axis range.",
-    )
 
 
 def render_results_guide(target, methods, subgroup_label=None):
@@ -2439,7 +2370,6 @@ def render_dashboard():
                         item["kda_result"],
                         active_methods,
                         title=f"Driver ranking — {item['group']}",
-                        key_prefix=f"subgroup_chart_{group_file or 'group'}",
                     )
                     st.markdown(
                         '<div class="gbk-mini-note">Detailed scores for this group. Use the chart for the quick read and the table for appendix or QA detail.</div>',
